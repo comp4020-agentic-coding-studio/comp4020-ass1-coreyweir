@@ -67,32 +67,93 @@ a {
   position: fixed;
   top: 1rem;
   right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font: inherit;
-  font-size: 0.8rem;
+  border-radius: 50%;
   cursor: pointer;
   z-index: 10;
+  transition:
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
 }
 
 .theme-toggle:hover {
-  color: var(--accent);
   border-color: var(--accent);
 }
 
-/* Intro */
+.bulb-icon {
+  overflow: visible;
+  transition: filter 0.25s ease;
+}
 
+.bulb-glass {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition:
+    fill 0.25s ease,
+    stroke 0.25s ease;
+}
+
+.bulb-filament {
+  fill: none;
+  stroke: var(--muted-dim);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  transition: stroke 0.25s ease;
+}
+
+.bulb-base {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Bulb "on": warm glow, regardless of which theme is active. Currently only
+   reachable in light mode (that's the whole point of the toggle), but the
+   glow is keyed off the bulb's own state, not the theme, in case that ever
+   changes. */
+:root[data-theme="light"] .bulb-glass {
+  fill: #ffd54a;
+  stroke: #f5a300;
+}
+
+:root[data-theme="light"] .bulb-filament {
+  stroke: #8a5a00;
+}
+
+:root[data-theme="light"] .bulb-icon {
+  filter: drop-shadow(0 0 4px rgb(255 190 40 / 90%));
+}
+
+:root[data-theme="light"] .theme-toggle {
+  border-color: #f5a300;
+  box-shadow:
+    0 0 12px 2px rgb(255 200 60 / 55%),
+    0 0 28px 6px rgb(255 200 60 / 25%);
+}
+
+/* Intro: the block sits centred on the page, but the text inside it reads
+   left-justified rather than centred line-by-line. */
 .intro {
   max-width: 34rem;
   margin: 0 auto 2.5rem;
-  text-align: center;
+  text-align: left;
 }
 
 .intro h1 {
-  margin-bottom: 1rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
 }
 
 .intro p {

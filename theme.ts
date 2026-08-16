@@ -13,8 +13,10 @@ function applyStoredTheme(): void {
 
 function updateToggleLabel(toggle: HTMLButtonElement): void {
   const isLight = document.documentElement.dataset.theme === "light";
-  toggle.textContent = isLight ? "Dark mode" : "Light mode";
+  const label = toggle.querySelector<HTMLElement>(".theme-toggle-label");
+  if (label) label.textContent = isLight ? "Switch to dark mode" : "Switch to light mode";
   toggle.setAttribute("aria-pressed", String(isLight));
+  toggle.title = isLight ? "Switch to dark mode" : "Switch to light mode";
 }
 
 export function initTheme(toggle: HTMLButtonElement | null): void {
