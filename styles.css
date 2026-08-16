@@ -454,7 +454,14 @@ a {
   align-items: center;
 }
 
+/* --layout is read by card-layout.ts to decide which way an annotation card
+   should prefer to go when the default doesn't fit: the free space is beside
+   the payload in one layout and under it in the other. Declared here so the
+   breakpoint lives in one place — the media query below — rather than being
+   duplicated as a magic number in the script. */
 .section-detail {
+  --layout: side;
+
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 1.5rem 2rem;
@@ -482,6 +489,12 @@ a {
    must not be clipped by it. The corners are rounded on the bar and the code
    separately instead. */
 .payload {
+  /* How far the marker's centre sits beyond the code's content edge, and how
+     far out from it the card starts. Shared so the dashed leader line between
+     them can be derived rather than eyeballed twice. */
+  --marker-gutter: 1.5rem;
+  --card-offset: 4.25rem;
+
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 0.6rem;
@@ -607,7 +620,7 @@ a {
 .annotation-marker {
   position: absolute;
   top: 50%;
-  right: -1.5rem;
+  right: calc(-1 * var(--marker-gutter));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -644,12 +657,127 @@ a {
   display: none;
 }
 
+/* The annotation card. Anchored to its own region — vertically centred on the
+   same lines the marker is — so the pair line up without measuring anything,
+   and stay lined up when the payload rewraps at a different width.
+   z-index beats the later regions it may overlap: they're position: relative
+   with z-index auto, so tree order would otherwise paint them on top. */
+.annotation-card {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--card-offset));
+  z-index: 3;
+  width: 16.5rem;
+
+  /* Never wider than the viewport it has to fit inside — at phone widths the
+     fixed width alone would guarantee the horizontal overflow that
+     card-layout.ts is there to prevent. */
+  max-width: calc(100vw - 2rem);
+  padding: 0.7rem 0.85rem 0.8rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
+
+  /* The anchored starting position. card-layout.ts overrides left/top (before
+     the frame is painted) with a placement that's been checked against the
+     viewport — this is what it measures, and what it falls back to. */
+  transform: translateY(-50%);
+
+  /* Reset the inherited <pre> typography: this is prose, not code. */
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: normal;
+  text-indent: 0;
+}
+
+/* The leader line from the marker dot to the card, drawn by card-layout.ts
+   once both ends have been placed. Sized to the region and left to overflow,
+   so the line's coordinates are simply region-relative — including negative
+   ones, for a card sitting above or to the left. */
+.annotation-leader {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.annotation-leader polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.annotation-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.annotation-card-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.annotation-card-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.annotation-card-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.annotation-card-close:hover {
+  color: var(--ink);
+  background: var(--surface-alt);
+}
+
+.cross-icon path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.annotation-card-note {
+  margin: 0.45rem 0 0;
+  color: var(--ink);
+}
+
 /* Two columns stop working before the phone breakpoint does: the JSON is
    monospaced and can't reflow below a certain width without wrapping every
    line. Stacked, the payload goes ABOVE the prose — it's the thing the section
    is about, and a couple of paragraphs is a lot to scroll past to reach it. */
 @media (width <= 900px) {
   .section-detail {
+    --layout: stack;
+
     grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
   }

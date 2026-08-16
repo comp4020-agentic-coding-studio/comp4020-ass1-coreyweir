@@ -9,7 +9,8 @@
 // the cache for everything downstream of the edit. Steps before the one you
 // touched are untouched.
 
-import { renderPayload } from "./json-view";
+import { layoutCards, watchCardLayout } from "./card-layout";
+import { markerFocusKey, renderPayload } from "./json-view";
 import { STEPS, type Section } from "./steps";
 
 interface SectionState {
@@ -36,6 +37,7 @@ function hasState(sections: SectionState[]): boolean {
 function buildSectionDetail(
   section: Section,
   state: SectionState,
+  focusKeyPrefix: string,
   onToggleAnnotation: (annotationIndex: number) => void,
 ): HTMLElement {
   const detail = document.createElement("div");
@@ -52,7 +54,11 @@ function buildSectionDetail(
   const payload = document.createElement("div");
   payload.className = "section-payload";
   payload.append(
-    renderPayload(section.payload, { open: state.open, onToggle: onToggleAnnotation }),
+    renderPayload(section.payload, {
+      open: state.open,
+      onToggle: onToggleAnnotation,
+      focusKeyPrefix,
+    }),
   );
 
   // Prose first in the DOM, payload second; at narrow widths the payload is
@@ -97,6 +103,8 @@ function buildSection(
   const section = STEPS[stepIndex]?.sections[sectionIndex];
   if (!section) throw new Error(`No section ${stepIndex}/${sectionIndex}`);
 
+  const focusKeyPrefix = `${stepIndex}:${sectionIndex}`;
+
   const li = document.createElement("li");
   li.className = "step-section";
   li.dataset.expanded = String(state.expanded);
@@ -108,6 +116,7 @@ function buildSection(
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.className = "section-toggle";
+  toggle.dataset.focusKey = `${focusKeyPrefix}:toggle`;
   toggle.setAttribute("aria-expanded", String(state.expanded));
 
   const num = document.createElement("span");
@@ -129,7 +138,9 @@ function buildSection(
   li.append(heading);
 
   if (state.expanded) {
-    li.append(buildSectionDetail(section, state, handlers.onToggleAnnotation));
+    li.append(
+      buildSectionDetail(section, state, focusKeyPrefix, handlers.onToggleAnnotation),
+    );
   }
   return li;
 }
@@ -214,7 +225,13 @@ export function mountCarousel(root: HTMLElement): void {
     return discarded;
   }
 
-  function render(): void {
+  /**
+   * Every toggle rebuilds the whole step (state in, DOM out — which is also
+   * the mechanism this page is about), so the element that was clicked no
+   * longer exists afterwards. `focusKey` names its replacement, otherwise a
+   * keyboard user is dumped back at the top of the document on every keypress.
+   */
+  function render(focusKey?: string): void {
     const step = STEPS[state.index];
     if (!step) throw new Error(`No step at index ${state.index}`);
 
@@ -248,6 +265,15 @@ export function mountCarousel(root: HTMLElement): void {
     });
     article.append(sections);
     cardRoot!.append(article);
+
+    // After the cards are in the document, so their real heights can be read.
+    layoutCards(cardRoot!);
+
+    if (focusKey) {
+      cardRoot!
+        .querySelector<HTMLElement>(`[data-focus-key="${CSS.escape(focusKey)}"]`)
+        ?.focus();
+    }
   }
 
   function goTo(newIndex: number): void {
@@ -258,16 +284,16 @@ export function mountCarousel(root: HTMLElement): void {
   }
 
   /** Any change to a step's expand state is an edit to the prefix. */
-  function afterEdit(): void {
+  function afterEdit(focusKey?: string): void {
     invalidateAfter(state.index);
-    render();
+    render(focusKey);
   }
 
   function toggleSection(sectionIndex: number): void {
     const sectionState = state.steps[state.index]?.[sectionIndex];
     if (!sectionState) return;
     sectionState.expanded = !sectionState.expanded;
-    afterEdit();
+    afterEdit(`${state.index}:${sectionIndex}:toggle`);
   }
 
   function toggleAnnotation(sectionIndex: number, annotationIndex: number): void {
@@ -276,7 +302,22 @@ export function mountCarousel(root: HTMLElement): void {
     sectionState.open = sectionState.open.includes(annotationIndex)
       ? sectionState.open.filter((index) => index !== annotationIndex)
       : [...sectionState.open, annotationIndex];
+    // Focus goes back to the marker either way: on close the card is gone, and
+    // on open the marker is what you'd tab from to reach the card.
+    afterEdit(markerFocusKey(`${state.index}:${sectionIndex}`, annotationIndex));
+  }
+
+  /**
+   * Escape clears every open card in the step at once, rather than the most
+   * recent one — one keystroke to get the payload back unobstructed, and one
+   * cache edit rather than a run of them.
+   */
+  function closeAllCards(): boolean {
+    const sections = state.steps[state.index] ?? [];
+    if (!sections.some((section) => section.open.length > 0)) return false;
+    for (const section of sections) section.open = [];
     afterEdit();
+    return true;
   }
 
   root.addEventListener("click", (event) => {
@@ -299,8 +340,11 @@ export function mountCarousel(root: HTMLElement): void {
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
       goTo(state.index - 1);
+    } else if (event.key === "Escape") {
+      if (closeAllCards()) event.preventDefault();
     }
   });
 
+  watchCardLayout(cardRoot);
   render();
 }

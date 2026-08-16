@@ -11,6 +11,11 @@ export interface PayloadViewOptions {
   /** Indices of annotations whose card is open. Owned by the carousel's state. */
   open: readonly number[];
   onToggle: (annotationIndex: number) => void;
+  /**
+   * Prefix for `data-focus-key`, which the carousel uses to put focus back on
+   * the equivalent element after a re-render (every toggle rebuilds the step).
+   */
+  focusKeyPrefix: string;
 }
 
 const TOKEN_RE =
@@ -108,6 +113,11 @@ function renderLine(line: PayloadLine, enclosingDepth: number): HTMLElement {
   return el;
 }
 
+/** The key that survives a re-render, so focus can be put back afterwards. */
+export function markerFocusKey(focusKeyPrefix: string, annotationIndex: number): string {
+  return `${focusKeyPrefix}:marker:${annotationIndex}`;
+}
+
 function buildMarker(
   region: Region,
   payload: Payload,
@@ -120,6 +130,10 @@ function buildMarker(
   marker.type = "button";
   marker.className = "annotation-marker";
   marker.dataset.annotation = String(region.annotationIndex);
+  marker.dataset.focusKey = markerFocusKey(
+    options.focusKeyPrefix,
+    region.annotationIndex,
+  );
   marker.setAttribute("aria-expanded", String(isOpen));
   marker.setAttribute(
     "aria-label",
@@ -138,6 +152,74 @@ function buildMarker(
     options.onToggle(region.annotationIndex);
   });
   return marker;
+}
+
+/**
+ * The card for an open annotation. It lives inside its region rather than in a
+ * separate layer, so CSS alone anchors it beside the lines it describes — no
+ * measuring, and it can't drift out of sync with the code when the payload
+ * rewraps. Placement rules for narrower viewports are in styles.css.
+ */
+function buildCard(
+  region: Region,
+  payload: Payload,
+  options: PayloadViewOptions,
+): HTMLElement | undefined {
+  const annotation = payload.annotations[region.annotationIndex];
+  if (!annotation) return undefined;
+  const number = region.annotationIndex + 1;
+
+  const card = document.createElement("aside");
+  card.className = "annotation-card";
+  card.dataset.annotation = String(region.annotationIndex);
+
+  const head = document.createElement("div");
+  head.className = "annotation-card-head";
+
+  const num = document.createElement("span");
+  num.className = "annotation-card-num";
+  num.setAttribute("aria-hidden", "true");
+  num.textContent = String(number);
+
+  const title = document.createElement("h4");
+  title.className = "annotation-card-title";
+  title.textContent = annotation.title;
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "annotation-card-close";
+  close.setAttribute("aria-label", `Close annotation ${number}: ${annotation.title}`);
+  close.append(buildCross());
+  close.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onToggle(region.annotationIndex);
+  });
+
+  head.append(num, title, close);
+
+  const note = document.createElement("p");
+  note.className = "annotation-card-note";
+  note.textContent = annotation.note;
+
+  card.append(head, note);
+
+  // Clicking the card's body shouldn't count as clicking the region behind it.
+  card.addEventListener("click", (event) => event.stopPropagation());
+  return card;
+}
+
+function buildCross(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.classList.add("cross-icon");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M6 6l12 12M18 6L6 18");
+  svg.append(path);
+  return svg;
 }
 
 /**
@@ -183,7 +265,8 @@ function renderRegion(
   el.className = "payload-region";
   el.dataset.annotation = String(region.annotationIndex);
   el.style.setProperty("--indent", String(Math.max(0, region.depth - enclosingDepth)));
-  if (options.open.includes(region.annotationIndex)) el.dataset.open = "true";
+  const isOpen = options.open.includes(region.annotationIndex);
+  if (isOpen) el.dataset.open = "true";
 
   el.append(
     ...renderRange(
@@ -197,6 +280,10 @@ function renderRegion(
     ),
   );
   el.append(buildMarker(region, payload, options));
+  if (isOpen) {
+    const card = buildCard(region, payload, options);
+    if (card) el.append(card);
+  }
   return el;
 }
 
