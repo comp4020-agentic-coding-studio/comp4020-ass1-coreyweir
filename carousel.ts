@@ -112,14 +112,29 @@ function render(nav: HTMLElement, cardRoot: HTMLElement, state: CarouselState): 
   summary.className = "step-summary";
   summary.textContent = step.summary;
   header.append(summary);
+  article.append(header);
 
+  // A numbered, link-styled disclosure rather than a boxed button — there's
+  // only one section per step today, so it's always "1", but the numbering
+  // is there for when a step splits into several independently-expandable
+  // sections (see CLAUDE.md).
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.className = "step-toggle";
   toggle.setAttribute("aria-expanded", String(isExpanded));
-  toggle.textContent = isExpanded ? "Hide the request" : "Show the request";
-  header.append(toggle);
-  article.append(header);
+
+  const num = document.createElement("span");
+  num.className = "step-toggle-num";
+  num.textContent = "1.";
+  toggle.append(num, " Request & response ");
+
+  const caret = document.createElement("span");
+  caret.className = "step-toggle-caret";
+  caret.setAttribute("aria-hidden", "true");
+  caret.textContent = isExpanded ? "▾" : "▸";
+  toggle.append(caret);
+
+  article.append(toggle);
 
   if (isExpanded) {
     article.append(buildStepDetail(index));

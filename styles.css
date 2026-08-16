@@ -14,6 +14,8 @@
   --accent-soft: rgb(125 171 255 / 16%);
   --code-bg: #0d0f16;
   --code-ink: #d6dbe6;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
 }
 
 :root[data-theme="light"] {
@@ -167,30 +169,50 @@ a {
   gap: 0.5rem;
 }
 
-/* Step nav: arrows flanking greyed-out peeks of the adjacent steps */
-
+/* Step nav: arrows flanking greyed-out peeks of the adjacent steps. The
+   peeks tilt away in 3D (a cheap cover-flow trick) so the strip reads as a
+   curved rail rather than a flat row of text — the "carousel" the site keeps
+   talking about should look like one. */
 .step-nav {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr auto;
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  padding: 0.5rem 0;
+  perspective: 700px;
+  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
 }
 
 .step-current-title {
   margin: 0;
   text-align: center;
-  font-size: 1.3rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.85rem;
   color: var(--ink);
 }
 
 .step-peek {
   text-align: center;
   color: var(--muted-dim);
-  font-size: 0.95rem;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.3rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: transform 0.2s ease;
+}
+
+.step-peek-prev {
+  transform: rotateY(22deg) scale(0.82);
+  transform-origin: right center;
+}
+
+.step-peek-next {
+  transform: rotateY(-22deg) scale(0.82);
+  transform-origin: left center;
 }
 
 .step-arrow {
@@ -226,33 +248,43 @@ a {
 }
 
 .step-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .step-summary {
   margin: 0;
   color: var(--muted);
-  flex: 1 1 20rem;
 }
 
+/* A numbered heading that's obviously a link, not a boxed button — see
+   CLAUDE.md (style points iv/v/ix). */
 .step-toggle {
-  border: 1px solid var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
+  display: block;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 0.6rem;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
+  color: var(--accent);
   cursor: pointer;
-  white-space: nowrap;
+  text-align: left;
 }
 
+.step-toggle-num {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.step-toggle:hover .step-toggle-num,
 .step-toggle:hover {
-  background: var(--accent);
-  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.step-toggle-caret {
+  display: inline-block;
+  font-size: 0.75em;
 }
 
 .step-detail {
@@ -298,6 +330,7 @@ a {
   background: var(--code-bg);
   color: var(--code-ink);
   padding: 0.75rem 0.9rem;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
 }
 
@@ -335,6 +368,7 @@ a {
   background: var(--accent);
   color: var(--accent-ink);
   border: none;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   line-height: 1;
   cursor: pointer;
@@ -391,5 +425,14 @@ a {
 
   .step-current-title {
     grid-column: 2;
+    font-size: 1.4rem;
+  }
+
+  .intro h1 {
+    font-size: 1.9rem;
+
+    /* Clears the fixed theme toggle, which sits over this top-right corner
+       at every width. */
+    padding-right: 3.25rem;
   }
 }
