@@ -33,26 +33,37 @@ Hovering an annotated region outlines it; clicking opens a card beside it, with
 a leader line back to a marker that collapses to a dot once the card carries
 the number. Cards are closable, several can be open, and Escape clears them.
 
-Card placement, in preference order — the rule being "land in empty space",
-and which direction that is inverts between the two layouts:
+Card placement, in preference order — the rule being "land in empty space":
 
-- Side by side (prose | payload): right of the box, then **below** it. Never
-  left, because left is the prose: covering the text you're reading is worse
-  than hanging under the box.
-- Stacked (payload above prose): right, then left — the page margins beside the
-  box are free there — then below.
+- Right of the box, each card level with its own region.
+- Below the box, flowed into rows. Always has room, because it can grow
+  downwards.
 - All of a payload's cards go to the same zone. A mix of one beside the box and
   another under it reads as a bug even when each is individually sensible.
-- Overlapping a heading or the prose is fine: cards are closable and (soon)
-  draggable, so overlap is recoverable. Going off-screen isn't, and horizontal
-  scroll is never acceptable — that's the constraint the placement pass exists
-  to satisfy.
-- Cards should be draggable. Not yet built; the plumbing (position as an offset
-  from the region, recomputed on resize) is in place for it. Once it exists,
-  the "orbit the anchor point until it fits" idea becomes cheap — it's just
-  choosing a different initial offset — but the four zones above cover the real
-  cases, so intermediate angles are only worth it if something specific needs
-  dodging.
+- Overlapping a heading or the prose is fine: cards are closable and draggable,
+  so overlap is recoverable. Going off-screen isn't, and horizontal scroll is
+  never acceptable — that's the constraint the placement pass exists to satisfy.
+
+A "left of the box" zone was planned for the stacked layout, built, and then
+removed: the payload always spans the content column, so the margin beside it is
+(viewport − 1024px) / 2, which only exceeds a card's width above ~1580px — by
+which point the layout is side by side and the right-hand gutter already fits.
+No viewport could reach it. Capping the payload's width doesn't rescue it
+either: at 820px an aggressive cap still leaves ~150px a side, and a 150px-wide
+card isn't readable. Worth recording because "left or right, whichever has room"
+is the obvious instinct, and the arithmetic says the room isn't there.
+
+Cards are draggable by their header (double-click puts one back). A drag is
+stored as an offset from the placement, not an absolute position, so a dragged
+card still travels with its region on a resize. Dragging is **not** an edit for
+the caching mechanic below — it doesn't invalidate anything or count as a miss —
+but the position is remembered state like the rest, so a flush caused by
+something else resets it. Closing a card also forgets its position, so
+reopening it from the marker starts beside the lines it describes.
+
+With the four-zone idea reduced to two, "orbit the anchor until it fits" has
+nothing left to solve: intermediate angles only pay off when dodging specific
+content, and overlapping content is allowed here.
 
 ### Expand state as a cache (the caching step, enacted)
 

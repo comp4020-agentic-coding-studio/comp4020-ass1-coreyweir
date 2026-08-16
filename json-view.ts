@@ -4,6 +4,8 @@
 // anything. Regions come from JSON paths (see payload-lines.ts), so they nest
 // properly and survive rewrapping at any width — no JS runs on resize.
 
+import { resetCardOffset, startCardDrag } from "./card-drag";
+import { writeOffset, type Offset } from "./card-layout";
 import { pathKey, serialisePayload, type PayloadLine } from "./payload-lines";
 import type { Payload } from "./steps";
 
@@ -11,6 +13,13 @@ export interface PayloadViewOptions {
   /** Indices of annotations whose card is open. Owned by the carousel's state. */
   open: readonly number[];
   onToggle: (annotationIndex: number) => void;
+  /** Where each card has been dragged to, by annotation index. */
+  offsets: Readonly<Record<number, Offset>>;
+  /** Commits a card's new offset. Not a cache edit — see card-drag.ts. */
+  onMove: (annotationIndex: number, offset: Offset) => void;
+  /** Re-runs the card placement pass (owned by the carousel, which knows the
+   *  root the cards were rendered into). */
+  relayout: () => void;
   /**
    * Prefix for `data-focus-key`, which the carousel uses to put focus back on
    * the equivalent element after a re-render (every toggle rebuilds the step).
@@ -172,9 +181,18 @@ function buildCard(
   const card = document.createElement("aside");
   card.className = "annotation-card";
   card.dataset.annotation = String(region.annotationIndex);
+  writeOffset(card, options.offsets[region.annotationIndex] ?? { dx: 0, dy: 0 });
+
+  const hooks = {
+    commit: (offset: Offset) => options.onMove(region.annotationIndex, offset),
+    relayout: options.relayout,
+  };
 
   const head = document.createElement("div");
   head.className = "annotation-card-head";
+  head.title = "Drag to move. Double-click to put it back.";
+  head.addEventListener("pointerdown", (event) => startCardDrag(event, card, hooks));
+  head.addEventListener("dblclick", () => resetCardOffset(card, hooks));
 
   const num = document.createElement("span");
   num.className = "annotation-card-num";

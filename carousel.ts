@@ -9,7 +9,7 @@
 // the cache for everything downstream of the edit. Steps before the one you
 // touched are untouched.
 
-import { layoutCards, watchCardLayout } from "./card-layout";
+import { layoutCards, watchCardLayout, type Offset } from "./card-layout";
 import { markerFocusKey, renderPayload } from "./json-view";
 import { STEPS, type Section } from "./steps";
 
@@ -17,6 +17,13 @@ interface SectionState {
   expanded: boolean;
   /** Indices of annotations whose card is open. */
   open: number[];
+  /**
+   * Where cards have been dragged to, by annotation index. Dragging isn't
+   * itself an edit — it doesn't invalidate anything — but the position is
+   * remembered state like the rest, so a flush caused by something else clears
+   * it along with everything else in the step (freshStepState, below).
+   */
+  offsets: Record<number, Offset>;
 }
 
 interface CarouselState {
@@ -27,18 +34,34 @@ interface CarouselState {
 }
 
 function freshStepState(stepIndex: number): SectionState[] {
-  return (STEPS[stepIndex]?.sections ?? []).map(() => ({ expanded: false, open: [] }));
+  return (STEPS[stepIndex]?.sections ?? []).map(() => ({
+    expanded: false,
+    open: [],
+    offsets: {},
+  }));
 }
 
 function hasState(sections: SectionState[]): boolean {
-  return sections.some((section) => section.expanded || section.open.length > 0);
+  return sections.some(
+    (section) =>
+      section.expanded ||
+      section.open.length > 0 ||
+      Object.keys(section.offsets).length > 0,
+  );
+}
+
+interface SectionHandlers {
+  onToggleSection: () => void;
+  onToggleAnnotation: (annotationIndex: number) => void;
+  onMoveCard: (annotationIndex: number, offset: Offset) => void;
+  relayout: () => void;
 }
 
 function buildSectionDetail(
   section: Section,
   state: SectionState,
   focusKeyPrefix: string,
-  onToggleAnnotation: (annotationIndex: number) => void,
+  handlers: SectionHandlers,
 ): HTMLElement {
   const detail = document.createElement("div");
   detail.className = "section-detail";
@@ -56,7 +79,10 @@ function buildSectionDetail(
   payload.append(
     renderPayload(section.payload, {
       open: state.open,
-      onToggle: onToggleAnnotation,
+      onToggle: handlers.onToggleAnnotation,
+      offsets: state.offsets,
+      onMove: handlers.onMoveCard,
+      relayout: handlers.relayout,
       focusKeyPrefix,
     }),
   );
@@ -98,7 +124,7 @@ function buildSection(
   stepIndex: number,
   sectionIndex: number,
   state: SectionState,
-  handlers: { onToggleSection: () => void; onToggleAnnotation: (index: number) => void },
+  handlers: SectionHandlers,
 ): HTMLElement {
   const section = STEPS[stepIndex]?.sections[sectionIndex];
   if (!section) throw new Error(`No section ${stepIndex}/${sectionIndex}`);
@@ -138,9 +164,7 @@ function buildSection(
   li.append(heading);
 
   if (state.expanded) {
-    li.append(
-      buildSectionDetail(section, state, focusKeyPrefix, handlers.onToggleAnnotation),
-    );
+    li.append(buildSectionDetail(section, state, focusKeyPrefix, handlers));
   }
   return li;
 }
@@ -297,6 +321,9 @@ export function mountCarousel(root: HTMLElement): void {
           onToggleSection: () => toggleSection(sectionIndex),
           onToggleAnnotation: (annotationIndex) =>
             toggleAnnotation(sectionIndex, annotationIndex),
+          onMoveCard: (annotationIndex, offset) =>
+            moveCard(sectionIndex, annotationIndex, offset),
+          relayout: () => layoutCards(cardRoot!),
         }),
       );
     });
@@ -333,12 +360,33 @@ export function mountCarousel(root: HTMLElement): void {
     afterEdit(`${state.index}:${sectionIndex}:toggle`);
   }
 
+  /**
+   * Records where a card was dragged to. Deliberately no invalidation and no
+   * re-render: moving a card isn't an edit to the prefix, and re-rendering here
+   * would replace the element the pointer is holding.
+   */
+  function moveCard(
+    sectionIndex: number,
+    annotationIndex: number,
+    offset: Offset,
+  ): void {
+    const sectionState = state.steps[state.index]?.[sectionIndex];
+    if (!sectionState) return;
+    if (offset.dx === 0 && offset.dy === 0) delete sectionState.offsets[annotationIndex];
+    else sectionState.offsets[annotationIndex] = offset;
+  }
+
   function toggleAnnotation(sectionIndex: number, annotationIndex: number): void {
     const sectionState = state.steps[state.index]?.[sectionIndex];
     if (!sectionState) return;
-    sectionState.open = sectionState.open.includes(annotationIndex)
+    const wasOpen = sectionState.open.includes(annotationIndex);
+    sectionState.open = wasOpen
       ? sectionState.open.filter((index) => index !== annotationIndex)
       : [...sectionState.open, annotationIndex];
+    // Closing a card forgets where it was dragged to: reopening it from the
+    // marker should put it back beside the lines it describes, rather than
+    // reappearing somewhere the reader parked it and has since forgotten.
+    if (wasOpen) delete sectionState.offsets[annotationIndex];
     // Focus goes back to the marker either way: on close the card is gone, and
     // on open the marker is what you'd tab from to reach the card.
     afterEdit(markerFocusKey(`${state.index}:${sectionIndex}`, annotationIndex));
@@ -352,7 +400,10 @@ export function mountCarousel(root: HTMLElement): void {
   function closeAllCards(): boolean {
     const sections = state.steps[state.index] ?? [];
     if (!sections.some((section) => section.open.length > 0)) return false;
-    for (const section of sections) section.open = [];
+    for (const section of sections) {
+      section.open = [];
+      section.offsets = {};
+    }
     afterEdit();
     return true;
   }

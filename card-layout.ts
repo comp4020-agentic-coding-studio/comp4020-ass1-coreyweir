@@ -5,19 +5,23 @@
 // there's room in the gutter — but at a laptop width the gutter isn't wide
 // enough and the card ends up off-screen, and stacked on a phone it pushes the
 // page wider than the viewport. Horizontal scroll is the one outcome that isn't
-// acceptable, so this pass finds somewhere the cards do fit.
+// acceptable, so this pass finds somewhere the cards do fit:
+//
+//  - Right of the box — the default, each card level with its own region.
+//  - Below the box, flowed into rows — the fallback that always has room,
+//    because it can grow downwards. It overlaps the prose, which is fine: a
+//    card is closable and draggable, so overlap is recoverable in a way that
+//    being off-screen isn't.
+//
+// A "left of the box" zone was tried and removed: the payload always spans the
+// content column, so the margin beside it is (viewport − 1024px) / 2, which
+// only exceeds a card's width above ~1580px — by which point the layout is side
+// by side and the right-hand gutter already fits. There is no viewport where it
+// could trigger, and a branch that can never run implies coverage it hasn't got.
 //
 // All of a payload's cards go to the same zone rather than each picking its own
 // best spot: a mix of one card beside the box and another under it reads as a
-// mistake, even when each placement is individually sensible. The zones, in
-// order of preference:
-//
-//  - Right of the box — the default, each card level with its own region.
-//  - Left of the box — only when the payload is stacked above the prose, where
-//    the page margin beside it is free. In the side-by-side layout, left is the
-//    prose, and covering the text you're reading is worse than hanging below.
-//  - Below the box, flowed into rows — the fallback that always has room,
-//    because it can grow downwards.
+// mistake, even when each placement is individually sensible.
 //
 // Everything is expressed as an offset from the card's own region, so the cards
 // stay attached to the lines they describe, and re-running this after a resize
@@ -29,6 +33,16 @@ const GAP_PX = 14;
 const STACK_GAP_PX = 10;
 /** How close to the viewport edge a card may sit before it counts as off. */
 const EDGE_PX = 8;
+/** Cap on how far a card can be dragged vertically from its anchor. Bounding
+ *  the offset (rather than clamping the result into the viewport) keeps a
+ *  dragged card's position stable when the page is scrolled or resized. */
+const MAX_DRAG_Y_PX = 800;
+
+/** How far a card has been dragged from where this pass would have put it. */
+export interface Offset {
+  dx: number;
+  dy: number;
+}
 
 interface Box {
   x: number;
@@ -43,16 +57,28 @@ interface Card {
   /** The lines this card describes, in viewport coordinates. */
   anchor: DOMRect;
   box: Box;
+  offset: Offset;
 }
 
-type Zone = "right" | "left" | "below";
+type Zone = "right" | "below";
 
-/** Whether the payload sits beside the prose ("side") or above it ("stack").
- *  Read from CSS so the breakpoint isn't duplicated as a number in here. */
-function layoutMode(payload: HTMLElement): "side" | "stack" {
-  return getComputedStyle(payload).getPropertyValue("--layout").trim() === "stack"
-    ? "stack"
-    : "side";
+export function readOffset(el: HTMLElement): Offset {
+  return {
+    dx: Number(el.dataset.dx) || 0,
+    dy: Number(el.dataset.dy) || 0,
+  };
+}
+
+/** Live during a drag; the carousel's state is only written at drag end. */
+export function writeOffset(el: HTMLElement, offset: Offset): void {
+  el.dataset.dx = String(Math.round(offset.dx));
+  el.dataset.dy = String(
+    Math.round(Math.min(Math.max(offset.dy, -MAX_DRAG_Y_PX), MAX_DRAG_Y_PX)),
+  );
+}
+
+function isDragged(offset: Offset): boolean {
+  return offset.dx !== 0 || offset.dy !== 0;
 }
 
 function fitsHorizontally(box: Box): boolean {
@@ -63,18 +89,23 @@ function fitsHorizontally(box: Box): boolean {
  * Cards beside the box, each vertically centred on its own region, then pushed
  * down out of each other's way — two annotations a few lines apart anchor to
  * nearly the same height, and a card is taller than a few lines of code.
+ *
+ * A dragged card is left out of that: it's where the reader put it, so it
+ * neither gets pushed nor pushes anything else around.
  */
-function placeBeside(cards: Card[], payload: DOMRect, side: "right" | "left"): boolean {
+function placeRight(cards: Card[], payload: DOMRect): boolean {
   let previousBottom = Number.NEGATIVE_INFINITY;
   for (const card of cards) {
     const { width, height } = card.box;
-    const x = side === "right" ? payload.right + GAP_PX : payload.left - GAP_PX - width;
+    const x = payload.right + GAP_PX;
     if (!fitsHorizontally({ x, y: 0, width, height })) return false;
 
     const centred = card.anchor.top + card.anchor.height / 2 - height / 2;
-    const y = Math.max(centred, previousBottom + STACK_GAP_PX);
+    const y = isDragged(card.offset)
+      ? centred
+      : Math.max(centred, previousBottom + STACK_GAP_PX);
     card.box = { x, y, width, height };
-    previousBottom = y + height;
+    if (!isDragged(card.offset)) previousBottom = y + height;
   }
   return true;
 }
@@ -83,8 +114,7 @@ function placeBeside(cards: Card[], payload: DOMRect, side: "right" | "left"): b
  * Cards flowed into rows under the box, left to right. Rows start at the box's
  * left edge so they never spill sideways over the prose, but they may run past
  * its right edge into the gutter, which is empty — being under the box matters,
- * being no wider than it doesn't. Rows can always grow downwards, which is what
- * makes this the fallback that can't fail.
+ * being no wider than it doesn't.
  */
 function placeBelow(cards: Card[], payload: DOMRect): void {
   const rowRight = window.innerWidth - EDGE_PX;
@@ -106,9 +136,8 @@ function placeBelow(cards: Card[], payload: DOMRect): void {
   }
 }
 
-function chooseZone(cards: Card[], payload: DOMRect, mode: "side" | "stack"): Zone {
-  if (placeBeside(cards, payload, "right")) return "right";
-  if (mode === "stack" && placeBeside(cards, payload, "left")) return "left";
+function chooseZone(cards: Card[], payload: DOMRect): Zone {
+  if (placeRight(cards, payload)) return "right";
   placeBelow(cards, payload);
   return "below";
 }
@@ -126,8 +155,8 @@ function markerCentre(card: Card): { x: number; y: number } | undefined {
  * The route from the marker dot to the card, in viewport coordinates.
  *
  * Beside the box it's a straight line to the nearest point on the card — one
- * rule that covers a card level with its region, one nudged down, and (later)
- * one dragged anywhere.
+ * rule that covers a card level with its region, one nudged down, and one
+ * dragged anywhere.
  *
  * Below the box it has to be routed rather than direct: a straight line from a
  * dot at the box's right edge to a card underneath it cuts diagonally across
@@ -135,32 +164,33 @@ function markerCentre(card: Card): { x: number; y: number } | undefined {
  * no text in it — into the corridor between box and cards, and only then runs
  * sideways. `fan` offsets each card's corridor slightly so two routes sharing it
  * don't overlap into one line.
+ *
+ * A dragged card gets the straight line whichever zone it's in: once it's been
+ * moved by hand the corridor may be nowhere near it, and a route through a
+ * corridor it has left behind reads worse than a direct line.
  */
 function route(
   from: { x: number; y: number },
-  card: Box,
+  card: Card,
   zone: Zone,
   payload: DOMRect,
   fan: number,
 ): Array<{ x: number; y: number }> {
-  if (zone !== "below") {
-    return [
-      from,
-      {
-        x: Math.min(Math.max(from.x, card.x), card.x + card.width),
-        y: Math.min(Math.max(from.y, card.y), card.y + card.height),
-      },
-    ];
-  }
+  const { x, y, width, height } = card.box;
+  const nearest = {
+    x: Math.min(Math.max(from.x, x), x + width),
+    y: Math.min(Math.max(from.y, y), y + height),
+  };
+  if (zone !== "below" || isDragged(card.offset)) return [from, nearest];
 
   const corridorY = payload.bottom + GAP_PX / 2 + fan;
-  const inset = Math.min(14, card.width / 2);
-  const targetX = Math.min(Math.max(from.x, card.x + inset), card.x + card.width - inset);
+  const inset = Math.min(14, width / 2);
+  const targetX = Math.min(Math.max(from.x, x + inset), x + width - inset);
   return [
     from,
     { x: from.x, y: corridorY },
     { x: targetX, y: corridorY },
-    { x: targetX, y: card.y },
+    { x: targetX, y },
   ];
 }
 
@@ -168,7 +198,7 @@ function drawLeader(card: Card, zone: Zone, payload: DOMRect, fan: number): void
   const from = markerCentre(card);
   if (!from) return;
   const origin = card.region.getBoundingClientRect();
-  const points = route(from, card.box, zone, payload, fan);
+  const points = route(from, card, zone, payload, fan);
 
   // The dot is under the card: there's nothing to join, and a stub would just
   // poke out from beneath it.
@@ -210,8 +240,6 @@ function layoutPayload(payload: HTMLElement): void {
     el.style.removeProperty("transform");
   }
 
-  // DOM order is payload order, so the cards read top-down in the same order as
-  // the lines they point at, whichever zone they end up in.
   const cards: Card[] = [];
   for (const el of elements) {
     const region = el.parentElement;
@@ -222,13 +250,25 @@ function layoutPayload(payload: HTMLElement): void {
       region,
       anchor: region.getBoundingClientRect(),
       box: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+      offset: readOffset(el),
     });
   }
 
   const payloadRect = payload.getBoundingClientRect();
-  const zone = chooseZone(cards, payloadRect, layoutMode(payload));
+  const zone = chooseZone(cards, payloadRect);
 
   cards.forEach((card, index) => {
+    // The drag offset is applied on top of the placement, not instead of it, so
+    // a dragged card still travels with its region on a resize or a rewrap.
+    // Only x is clamped to the viewport: horizontal scroll is the failure worth
+    // preventing, and clamping y would tug cards about as the page is scrolled.
+    const maxX = Math.max(EDGE_PX, window.innerWidth - EDGE_PX - card.box.width);
+    card.box = {
+      ...card.box,
+      x: Math.min(Math.max(card.box.x + card.offset.dx, EDGE_PX), maxX),
+      y: card.box.y + card.offset.dy,
+    };
+
     const origin = card.region.getBoundingClientRect();
     card.el.dataset.zone = zone;
     card.el.style.left = `${Math.round(card.box.x - origin.left)}px`;
