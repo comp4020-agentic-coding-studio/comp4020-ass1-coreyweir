@@ -1,16 +1,270 @@
+:root {
+  --ink: #1a1a1a;
+  --muted: #5b6270;
+  --line: #d8dce3;
+  --accent: #0b5fff;
+  --accent-soft: #e8f0ff;
+  --code-bg: #1e2230;
+  --code-ink: #d6dbe6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  padding: 2rem;
+  padding: 1.5rem 1rem 3rem;
   font-family: system-ui, sans-serif;
   line-height: 1.6;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 main {
-  max-width: 40rem;
+  max-width: 64rem;
   margin: 0 auto;
 }
 
 a {
-  color: #0b5fff;
+  color: var(--accent);
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+}
+
+.overview {
+  max-width: 40rem;
+  color: var(--muted);
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+/* Carousel shell */
+
+.carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.carousel-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.carousel-position {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.carousel-dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.carousel-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.carousel-dot.is-current {
+  background: var(--accent);
+}
+
+.carousel-step {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.step-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+.step-header h2 {
+  margin: 0;
+  flex: 1 1 100%;
+}
+
+.step-summary {
+  margin: 0;
+  color: var(--muted);
+  flex: 1 1 20rem;
+}
+
+.step-toggle {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.step-toggle:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.step-detail {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1.5rem 2rem;
+}
+
+.step-body p {
+  margin-top: 0;
+}
+
+.step-payloads {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+/* Payload / JSON view */
+
+.payload-block {
+  margin: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.payload-block figcaption {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+}
+
+.payload-json {
+  margin: 0;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.8rem;
+}
+
+.payload-json code {
+  display: block;
+}
+
+.payload-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 1.4em;
+}
+
+.tok-key {
+  color: #7dd3fc;
+}
+
+.tok-string {
+  color: #a5e0a5;
+}
+
+.tok-number,
+.tok-bool,
+.tok-null {
+  color: #f2b366;
+}
+
+.annotation-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  padding: 0;
+}
+
+.annotation-marker.is-active {
+  background: #ff8a3d;
+}
+
+.payload-annotations {
+  margin: 0;
+  padding: 0.6rem 0.9rem 0.6rem 1.6rem;
+  background: #f4f6fa;
+  font-size: 0.85rem;
+}
+
+.payload-annotations li {
+  cursor: pointer;
+  padding: 0.15rem 0;
+}
+
+.payload-annotations li.is-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Nav controls */
+
+.carousel-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.carousel-nav button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.carousel-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.carousel-nav button:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Narrower than the assessment phone viewport (390px): stack everything */
+@media (width <= 700px) {
+  body {
+    padding: 1rem 0.85rem 2rem;
+  }
+
+  .carousel-step {
+    padding: 1rem;
+  }
+
+  .step-detail {
+    grid-template-columns: 1fr;
+  }
 }
