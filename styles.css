@@ -332,17 +332,23 @@ a {
 /* The fade lives on the peek text only (never the arrows, which must stay
    fully visible/clickable) — and floors out at partial opacity rather than
    fading to nothing, so the far side doesn't just vanish into the page
-   background in dark mode. */
+   background in dark mode.
+
+   Gentler than it was: this gradient used to spread across the full 1fr nav
+   column with the text centred in it, so it barely touched the word. The peeks
+   now hug their text (so the invalidation wipe lands on the word rather than
+   across the nav), which compressed the same gradient onto the text itself and
+   made the fade far heavier than intended. */
 .step-peek-prev {
   transform: rotateY(22deg) scale(0.82);
   transform-origin: right center;
-  mask-image: linear-gradient(to left, black 40%, rgb(0 0 0 / 45%) 100%);
+  mask-image: linear-gradient(to left, black 70%, rgb(0 0 0 / 80%) 100%);
 }
 
 .step-peek-next {
   transform: rotateY(-22deg) scale(0.82);
   transform-origin: left center;
-  mask-image: linear-gradient(to right, black 40%, rgb(0 0 0 / 45%) 100%);
+  mask-image: linear-gradient(to right, black 70%, rgb(0 0 0 / 80%) 100%);
 }
 
 /* The hover/focus "grow a little" affordance from CLAUDE.md — composed with
@@ -433,12 +439,13 @@ a {
   margin: 0 0 0.4rem;
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--muted-dim);
-  cursor: help;
-}
 
-.cache-tally[data-any="false"] {
-  opacity: 0.55;
+  /* --muted, and no extra opacity on top. It was --muted-dim at 0.55 opacity
+     until the count moved, which compounded to roughly 1.6:1 on white — being
+     quiet is what the size and the right-hand alignment are for; it doesn't
+     also need to be hard to read. */
+  color: var(--muted);
+  cursor: help;
 }
 
 .cache-tally-count {

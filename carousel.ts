@@ -157,7 +157,6 @@ function buildSection(
  */
 function fillCacheTally(tally: HTMLElement, count: number, flushed: boolean): void {
   tally.replaceChildren();
-  tally.dataset.any = String(count > 0);
   tally.title =
     "Expanding or collapsing anything discards what you'd opened on every later step — the same way editing a prompt's cached prefix invalidates everything after it.";
 
