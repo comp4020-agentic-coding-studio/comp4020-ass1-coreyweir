@@ -1,6 +1,6 @@
 // A one-way carousel: a fixed sequence of steps, moved through by prev/next
-// controls or the arrow keys only — no jumping straight to a later step, and
-// no wrapping past either end. Clicking a step reveals its payload; that
+// arrows or the arrow keys only — no jumping straight to a later step, and no
+// wrapping past either end. Clicking a step reveals its payload; that
 // expand/collapse state is what a later pass wires into a caching-style
 // invalidation mechanic (see CLAUDE.md). For now it's a plain toggle.
 
@@ -38,38 +38,69 @@ function buildStepDetail(stepIndex: number): HTMLElement {
   return detail;
 }
 
-function render(root: HTMLElement, state: CarouselState): void {
+/** Fills the static `#step-nav` landmark (see index.html) with this render's
+ * arrows and peeks. It's hydrated in place rather than recreated, so the
+ * built HTML always has a real `<nav>` even before this script runs. */
+function fillStepNav(nav: HTMLElement, index: number): void {
+  nav.replaceChildren();
+
+  const prevStep = STEPS[index - 1];
+  const nextStep = STEPS[index + 1];
+  const current = STEPS[index];
+  if (!current) throw new Error(`No step at index ${index}`);
+
+  const prevArrow = document.createElement("button");
+  prevArrow.type = "button";
+  prevArrow.className = "step-arrow step-arrow-prev";
+  prevArrow.setAttribute("aria-label", "Previous step");
+  prevArrow.textContent = "←";
+  prevArrow.disabled = !prevStep;
+  nav.append(prevArrow);
+
+  const prevPeek = document.createElement("span");
+  prevPeek.className = "step-peek step-peek-prev";
+  prevPeek.setAttribute("aria-hidden", "true");
+  prevPeek.textContent = prevStep?.title ?? "";
+  nav.append(prevPeek);
+
+  const currentTitle = document.createElement("h2");
+  currentTitle.className = "step-current-title";
+  currentTitle.textContent = current.title;
+  nav.append(currentTitle);
+
+  const nextPeek = document.createElement("span");
+  nextPeek.className = "step-peek step-peek-next";
+  nextPeek.setAttribute("aria-hidden", "true");
+  nextPeek.textContent = nextStep?.title ?? "";
+  nav.append(nextPeek);
+
+  const nextArrow = document.createElement("button");
+  nextArrow.type = "button";
+  nextArrow.className = "step-arrow step-arrow-next";
+  nextArrow.setAttribute("aria-label", "Next step");
+  nextArrow.textContent = "→";
+  nextArrow.disabled = !nextStep;
+  nav.append(nextArrow);
+}
+
+function render(nav: HTMLElement, cardRoot: HTMLElement, state: CarouselState): void {
   const { index, expanded } = state;
   const step = STEPS[index];
   if (!step) throw new Error(`No step at index ${index}`);
   const isExpanded = expanded[index] ?? false;
 
-  root.replaceChildren();
+  fillStepNav(nav, index);
 
-  const section = document.createElement("section");
-  section.className = "carousel";
-  section.setAttribute("aria-roledescription", "carousel");
-  section.setAttribute("aria-label", "How Claude Code works");
+  cardRoot.replaceChildren();
 
-  const status = document.createElement("div");
-  status.className = "carousel-status";
-  const position = document.createElement("p");
-  position.className = "carousel-position";
-  position.setAttribute("aria-live", "polite");
-  position.textContent = `Step ${index + 1} of ${STEPS.length}`;
-  status.append(position);
-
-  const dots = document.createElement("div");
-  dots.className = "carousel-dots";
-  dots.setAttribute("aria-hidden", "true");
-  STEPS.forEach((_, dotIndex) => {
-    const dot = document.createElement("span");
-    dot.className = "carousel-dot";
-    if (dotIndex === index) dot.classList.add("is-current");
-    dots.append(dot);
-  });
-  status.append(dots);
-  section.append(status);
+  // Visually hidden position cue for screen readers — the visual design is
+  // deliberately unnumbered (prev/next titles + greyed-out styling carry the
+  // position instead), but that's a visual choice, not an accessibility one.
+  const srPosition = document.createElement("p");
+  srPosition.className = "visually-hidden";
+  srPosition.setAttribute("aria-live", "polite");
+  srPosition.textContent = `Step ${index + 1} of ${STEPS.length}: ${step.title}`;
+  cardRoot.append(srPosition);
 
   const article = document.createElement("article");
   article.className = "carousel-step";
@@ -77,9 +108,6 @@ function render(root: HTMLElement, state: CarouselState): void {
 
   const header = document.createElement("header");
   header.className = "step-header";
-  const h2 = document.createElement("h2");
-  h2.textContent = step.title;
-  header.append(h2);
   const summary = document.createElement("p");
   summary.className = "step-summary";
   summary.textContent = step.summary;
@@ -96,31 +124,14 @@ function render(root: HTMLElement, state: CarouselState): void {
   if (isExpanded) {
     article.append(buildStepDetail(index));
   }
-  section.append(article);
-
-  const nav = document.createElement("nav");
-  nav.className = "carousel-nav";
-  nav.setAttribute("aria-label", "Step navigation");
-
-  const prev = document.createElement("button");
-  prev.type = "button";
-  prev.className = "carousel-prev";
-  prev.textContent = "← Back";
-  prev.disabled = index === 0;
-  nav.append(prev);
-
-  const next = document.createElement("button");
-  next.type = "button";
-  next.className = "carousel-next";
-  next.textContent = "Next →";
-  next.disabled = index === STEPS.length - 1;
-  nav.append(next);
-
-  section.append(nav);
-  root.append(section);
+  cardRoot.append(article);
 }
 
 export function mountCarousel(root: HTMLElement): void {
+  const nav = root.querySelector<HTMLElement>("#step-nav");
+  const cardRoot = root.querySelector<HTMLElement>("#carousel-root");
+  if (!nav || !cardRoot) throw new Error("carousel mount points missing from index.html");
+
   const state: CarouselState = {
     index: 0,
     expanded: STEPS.map(() => false),
@@ -130,19 +141,19 @@ export function mountCarousel(root: HTMLElement): void {
     const clamped = Math.min(Math.max(newIndex, 0), STEPS.length - 1);
     if (clamped === state.index) return;
     state.index = clamped;
-    render(root, state);
+    render(nav!, cardRoot!, state);
   }
 
   function toggleExpanded(): void {
     state.expanded[state.index] = !state.expanded[state.index];
-    render(root, state);
+    render(nav!, cardRoot!, state);
   }
 
   root.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     if (target.closest(".step-toggle")) toggleExpanded();
-    else if (target.closest(".carousel-prev")) goTo(state.index - 1);
-    else if (target.closest(".carousel-next")) goTo(state.index + 1);
+    else if (target.closest(".step-arrow-prev")) goTo(state.index - 1);
+    else if (target.closest(".step-arrow-next")) goTo(state.index + 1);
   });
 
   window.addEventListener("keydown", (event) => {
@@ -159,5 +170,5 @@ export function mountCarousel(root: HTMLElement): void {
     }
   });
 
-  render(root, state);
+  render(nav, cardRoot, state);
 }
