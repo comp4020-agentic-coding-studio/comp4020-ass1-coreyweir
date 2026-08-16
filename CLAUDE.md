@@ -22,24 +22,66 @@ match stale intentions.
   for that stage), with highlighting and annotations pointing at what matters.
 - Overview line at the top stating the point of the site, plain and short.
 
+### Sections and annotation cards (settled from mockups, built)
+
+A step is a list of numbered sections, each pairing one payload with the prose
+explaining it, expanded independently. Annotations are addressed by JSON path
+rather than by matching text, so a callout can cover a whole nested object and
+a stale one fails a test instead of silently vanishing.
+
+Hovering an annotated region outlines it; clicking opens a card beside it, with
+a leader line back to a marker that collapses to a dot once the card carries
+the number. Cards are closable, several can be open, and Escape clears them.
+
+Card placement, in preference order — the rule being "land in empty space",
+and which direction that is inverts between the two layouts:
+
+- Side by side (prose | payload): right of the box, then **below** it. Never
+  left, because left is the prose: covering the text you're reading is worse
+  than hanging under the box.
+- Stacked (payload above prose): right, then left — the page margins beside the
+  box are free there — then below.
+- All of a payload's cards go to the same zone. A mix of one beside the box and
+  another under it reads as a bug even when each is individually sensible.
+- Overlapping a heading or the prose is fine: cards are closable and (soon)
+  draggable, so overlap is recoverable. Going off-screen isn't, and horizontal
+  scroll is never acceptable — that's the constraint the placement pass exists
+  to satisfy.
+- Cards should be draggable. Not yet built; the plumbing (position as an offset
+  from the region, recomputed on resize) is in place for it. Once it exists,
+  the "orbit the anchor point until it fits" idea becomes cheap — it's just
+  choosing a different initial offset — but the four zones above cover the real
+  cases, so intermediate angles are only worth it if something specific needs
+  dodging.
+
 ### Expand state as a cache (the caching step, enacted)
 
-Which payloads are expanded is remembered as you move back and forth — until
-you change something. Toggling a step's expanded/collapsed state (not just
-re-viewing an already-expanded one) invalidates every later step's expand
-state, resetting it to collapsed; steps before the one you touched are
-untouched. This is a deliberate, simplified echo of prefix caching: edit
+Which sections are expanded, and which annotation cards are open, is remembered
+as you move back and forth — until you change something. Toggling any of that
+(not just re-viewing it) invalidates every later step's state, resetting it;
+steps before the one you touched are untouched. Sections within the step you
+touched are also untouched — the unit of invalidation is the step. This is a deliberate, simplified echo of prefix caching: edit
 something upstream and everything computed downstream of it has to be
 recomputed, everything before the edit stays valid. Make the invalidation
 moment legible when it happens (a beat, a flush/ripple, a label) rather than
 silently collapsing things — the losing-your-place moment is the point, not a
 bug to hide.
 
-Two ways to surface this that are both worth trying, not a decided choice yet:
-a small on-page tally of invalidation events (if there's screen space for it
-without cluttering the layout), and/or a nod to it in the caching step's own
-content — which conveniently comes last, so by the time the copy explains
-caching the reader has already lived through a cache miss or two.
+Surfaced two ways, both built. The collapse itself happens on steps that
+aren't on screen, so the feedback has to be where the reader is looking or the
+moment passes unnoticed:
+
+- A tally of cache misses beside the carousel, whose count flashes as it
+  increments. It only counts when state was really discarded — a toggle with
+  nothing open downstream isn't a miss, and counting it would make the number
+  mean nothing.
+- A wipe passing across the next step's name in the nav, travelling away from
+  the reader in the direction of the steps just cleared. It can only gesture at
+  the whole downstream, since the step that was holding state might be three
+  along, but a symbol pointing the right way beats no feedback.
+
+The caching step's own copy also nods to it — that step comes last, so by the
+time the text explains caching the reader has already paid for a miss or two.
 
 ## Content: placeholder-quality is fine for now
 
