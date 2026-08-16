@@ -145,10 +145,38 @@ function buildSection(
   return li;
 }
 
+/**
+ * The running count of times an edit here has thrown away state further along.
+ *
+ * The collapse itself happens on steps that aren't on screen, so without
+ * something like this the reader experiences nothing at the moment they cause
+ * it and only discovers the damage later, by which point cause and effect are
+ * too far apart to connect. The number flashes as it increments (see
+ * styles.css) — that flash is the point, the count is just what's left over
+ * afterwards.
+ */
+function fillCacheTally(tally: HTMLElement, count: number, flushed: boolean): void {
+  tally.replaceChildren();
+  tally.dataset.any = String(count > 0);
+  tally.title =
+    "Expanding or collapsing anything discards what you'd opened on every later step — the same way editing a prompt's cached prefix invalidates everything after it.";
+
+  const label = document.createElement("span");
+  label.className = "cache-tally-label";
+  label.textContent = count === 1 ? "cache miss" : "cache misses";
+
+  const value = document.createElement("span");
+  value.className = "cache-tally-count";
+  value.textContent = String(count);
+  if (flushed) value.classList.add("is-flushed");
+
+  tally.append(value, label);
+}
+
 /** Fills the static `#step-nav` landmark (see index.html) with this render's
  * arrows and peeks. It's hydrated in place rather than recreated, so the
  * built HTML always has a real `<nav>` even before this script runs. */
-function fillStepNav(nav: HTMLElement, index: number): void {
+function fillStepNav(nav: HTMLElement, index: number, flushed: boolean): void {
   nav.replaceChildren();
 
   const prevStep = STEPS[index - 1];
@@ -186,6 +214,12 @@ function fillStepNav(nav: HTMLElement, index: number): void {
   nextPeek.className = "step-peek step-peek-next";
   nextPeek.textContent = nextStep?.title ?? "";
   nextPeek.disabled = !nextStep;
+  // The next step's name is the only piece of "downstream" on screen, so it's
+  // where the flush can be shown: a wipe passes across it, travelling away from
+  // the reader in the direction of the steps just cleared. It can only gesture
+  // at the whole downstream — the step that was actually holding state might be
+  // three along — but a symbol in the right direction beats no feedback.
+  if (flushed && nextStep) nextPeek.classList.add("is-flushed");
   if (nextStep) nextPeek.setAttribute("aria-label", `Go on to ${nextStep.title}`);
   nav.append(nextPeek);
 
@@ -201,7 +235,10 @@ function fillStepNav(nav: HTMLElement, index: number): void {
 export function mountCarousel(root: HTMLElement): void {
   const nav = root.querySelector<HTMLElement>("#step-nav");
   const cardRoot = root.querySelector<HTMLElement>("#carousel-root");
-  if (!nav || !cardRoot) throw new Error("carousel mount points missing from index.html");
+  const tally = root.querySelector<HTMLElement>("#cache-tally");
+  if (!nav || !cardRoot || !tally) {
+    throw new Error("carousel mount points missing from index.html");
+  }
 
   const state: CarouselState = {
     index: 0,
@@ -231,11 +268,12 @@ export function mountCarousel(root: HTMLElement): void {
    * longer exists afterwards. `focusKey` names its replacement, otherwise a
    * keyboard user is dumped back at the top of the document on every keypress.
    */
-  function render(focusKey?: string): void {
+  function render(focusKey?: string, flushed = false): void {
     const step = STEPS[state.index];
     if (!step) throw new Error(`No step at index ${state.index}`);
 
-    fillStepNav(nav!, state.index);
+    fillStepNav(nav!, state.index, flushed);
+    fillCacheTally(tally!, state.invalidations, flushed);
     cardRoot!.replaceChildren();
 
     // Visually hidden position cue for screen readers — the visual design is
@@ -285,8 +323,8 @@ export function mountCarousel(root: HTMLElement): void {
 
   /** Any change to a step's expand state is an edit to the prefix. */
   function afterEdit(focusKey?: string): void {
-    invalidateAfter(state.index);
-    render(focusKey);
+    const flushed = invalidateAfter(state.index);
+    render(focusKey, flushed);
   }
 
   function toggleSection(sectionIndex: number): void {

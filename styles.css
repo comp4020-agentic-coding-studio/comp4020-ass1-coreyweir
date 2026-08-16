@@ -24,6 +24,16 @@
      around them flips. */
   --gold: #c9973f;
   --gold-dim: #9c8256;
+
+  /* Colours used *inside* the payload box. Also the same in both themes, and
+     for the same reason: the box itself stays dark in light mode (--code-bg
+     isn't redeclared below), so anything drawn on it has to be chosen against
+     a dark background either way. Using --accent here instead put a pale fill
+     behind the syntax colours in light mode and made the JSON unreadable. */
+  --code-accent: #7dabff;
+  --code-accent-ink: #0b1220;
+  --code-accent-soft: rgb(125 171 255 / 16%);
+  --code-line: #2e3342;
 }
 
 :root[data-theme="light"] {
@@ -278,6 +288,15 @@ a {
    cursor chrome to mark them as buttons; the hover/focus scale below is the
    only hint they're interactive. */
 .step-peek {
+  position: relative;
+
+  /* Hugs its text rather than filling the nav's 1fr column: the column is
+     several times wider than the word, and the flush wipe below is drawn over
+     this box — across a full-width box it reads as a bar across the nav
+     instead of a stroke through the step's name. */
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
   border: none;
   background: none;
   padding: 0;
@@ -334,6 +353,30 @@ a {
   transform: rotateY(-22deg) scale(0.92);
 }
 
+/* The flush: a wipe travelling left-to-right across the next step's name,
+   moving away from the reader in the direction of the steps whose expanded
+   state was just discarded. An overlay sweep rather than an animated
+   mask-image, which doesn't interpolate reliably, and rather than the peek's
+   own `transform`, which is already carrying the 3D tilt. Clipped by the
+   peek's existing overflow: hidden. */
+@keyframes peek-wipe {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(110%);
+  }
+}
+
+.step-peek.is-flushed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(201 151 63 / 70%), transparent);
+  animation: peek-wipe 0.55s ease-out;
+}
+
 /* Gold fill regardless of theme (see the --gold comment above) — this and
    the theme toggle are the only two buttons on the page, and sharing one
    solid colour between them is what makes it read as a colour theme rather
@@ -373,6 +416,51 @@ a {
 .step-arrow:hover:not(:disabled) {
   transform: scale(1.06);
   box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+}
+
+/* The invalidation tally. Kept quiet: it's a receipt, not a score, and it sits
+   at the edge of the carousel where it can be ignored until the number moves. */
+.cache-tally {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: 0 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted-dim);
+  cursor: help;
+}
+
+.cache-tally[data-any="false"] {
+  opacity: 0.55;
+}
+
+.cache-tally-count {
+  display: inline-block;
+  font-weight: 500;
+}
+
+/* The flash. Every render rebuilds this element (see fillCacheTally), so a
+   plain animation plays on creation — no need to remove and re-add a class. */
+@keyframes tally-flash {
+  0% {
+    color: var(--gold);
+    transform: scale(1.7);
+  }
+
+  55% {
+    color: var(--gold);
+  }
+
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+
+.cache-tally-count.is-flushed {
+  animation: tally-flash 0.7s ease-out;
 }
 
 /* The step's sections. Deliberately no panel or surface of their own — the
@@ -496,7 +584,7 @@ a {
   --card-offset: 4.25rem;
 
   margin: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--code-line);
   border-radius: 0.6rem;
   background: var(--code-bg);
 }
@@ -506,7 +594,7 @@ a {
   align-items: center;
   gap: 0.6rem;
   padding: 0.5rem 0.7rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--code-line);
   border-radius: 0.55rem 0.55rem 0 0;
   background: var(--code-bg);
 }
@@ -605,13 +693,13 @@ a {
 /* Nested regions are ancestors of each other, so a plain :hover would outline
    two boxes at once — this keeps it on the innermost region under the pointer. */
 .payload-region:hover:not(:has(.payload-region:hover)) {
-  outline-color: var(--accent);
+  outline-color: var(--code-accent);
 }
 
 .payload-region[data-open="true"] {
   outline-style: solid;
-  outline-color: var(--accent);
-  background: var(--accent-soft);
+  outline-color: var(--code-accent);
+  background: var(--code-accent-soft);
 }
 
 /* Sits in the gutter reserved by the code block's right padding, vertically
@@ -629,8 +717,8 @@ a {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--code-accent);
+  color: var(--code-accent-ink);
   font-family: var(--font-mono);
   font-size: 0.65rem;
   line-height: 1;
@@ -706,7 +794,7 @@ a {
 
 .annotation-leader polyline {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--code-accent);
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
