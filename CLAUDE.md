@@ -107,15 +107,95 @@ moment passes unnoticed:
 The caching step's own copy also nods to it — that step comes last, so by the
 time the text explains caching the reader has already paid for a miss or two.
 
-## Content: placeholder-quality is fine for now
+## Content: the copy pass
 
-I don't have the real internals content ready — that's separate prep work
-happening outside this repo. For this phase, write good-enough placeholder
-copy for each step (loop, tools, skills, compaction, caching) from general
-knowledge of how Claude Code works. It doesn't need to be authoritative yet;
-it needs to be roughly the right shape so we can judge the interaction and
-layout against real-feeling content. I'll swap in the researched version
-later — don't treat placeholder copy as a decision that needs defending.
+The prototype's copy is placeholder — written from general knowledge of how
+Claude Code works, and swapped in wholesale with the real thing once it exists.
+What's here now is the *shape* that's been settled by building against it: don't
+treat the placeholder text as content decisions, but do treat the structure as
+decided. For each section, the prose goes left and the payload goes right (the
+payload reorders above the prose on narrow widths — that's layout, not a
+statement about content); each section pairs one payload with two-ish short
+paragraphs; each annotation has a one-line card title and a note of roughly one
+to three sentences.
+
+### What the copy does and doesn't carry
+
+The site's idea is **attention, not context**: it isn't a reference on
+management, and the copy shouldn't try to be one. The sections' prose should be
+plain and confident — someone who understands the loop explaining it to you,
+not a manual. Where the old placeholder copy worked, it worked by *taking the
+payload at face value and explaining what's actually in it* — the note
+"Content blocks" points out the array is a list even for one line; "Same task,
+a fraction of the tokens" does the arithmetic the payload implies. That framing,
+not the specific sentences, is what the copy pass should keep. It's also what
+the caching step is *for*: "That isn't a metaphor for how this page's expanded
+sections behave — it's the same rule. If you've been opening and closing
+sections on the way here, you've already paid for a few of these." is the
+strongest writing in the file, because it makes the reader the subject.
+
+### Hard constraints
+
+- **The step headings are fixed.** Overview, Tools, Skills, Compaction, Caching
+  — don't change them, and don't rename or reorder the steps. Keep every section
+  with its payload (the section's own `title` may change).
+- **No payload edits.** The `data` values are the real, reference JSON for this
+  site. Don't reword or "fix" them, don't trim or add keys, don't adjust them
+  for tone — they're the anchor everything else hangs off. If the payload is
+  wrong, say so and raise it; don't silently improve it.
+- **No structural, layout, or code changes.** This pass is copy only. If
+  something isn't expressible in `steps.ts`, say so rather than reaching for
+  other files.
+- The payload label (`request.json`, `usage.json`, …) and the annotation
+  `path` are functional: they locate a callout in the JSON. Never change a
+  `path` (the tests catch a stale one); the label may change.
+
+### Sources, and how to use them
+
+The research lives as a folder of markdown and Mermaid diagrams. Use them as a
+base — but treat them as raw material, not as copy to import:
+there could be too much detail; the structure or focus could be wrong for this
+site; the tone could be off; a diagram could be vertical when it should be
+horizontal, or too dense, or just not worth including. Nothing in the research
+trumps the settled shape above.
+
+This is a content role, not a research role: the job is to **write the copy**
+and be the editor. If a claim genuinely needs verifying, verify it quietly —
+don't treat "the markdown says so" as sufficient authority, and don't
+over-research. You're not writing a spec.
+
+### What to consider
+
+- **The tone** is the main thing this pass is judged on. The right tone is
+  *informative, plain, and calm* — precise and confident, with a light touch of
+  craft ("costs full price" rather than "is charged"), never hypey, never
+  technical-speak for its own sake. A capitalised term first lands in backticks
+  or quotes so it reads as a name rather than a shout. Address the reader
+  sparingly, for real moments ("you've already paid for a few of these"), not
+  as a habit.
+- **Precision before charm.** If there's a gap between a cool metaphor and what
+  the payload actually shows, the payload wins. Don't invent capabilities,
+  performance claims, or "under the hood" detail the research doesn't support.
+- **The balance** is between being informative, relevant/concise, and engaging.
+  This is a quick, rhythmic read, not a deep dive. When in doubt, shorter — cut
+  a section to one tight paragraph rather than padding to two. Leave room for
+  the payload; the page's job is to get the reader to look at it.
+- **Pay off the annotations.** Each section's prose should set up its
+  annotations — the payload boxes are the point. A good note *uses* the payload
+  (quoting a value, doing the arithmetic) instead of glossing it.
+- **Speak to the reader's moment.** A reader has navigated forward through prior
+  steps to reach this one; they've seen compaction and caching advertised
+  before. Echo forward, don't re-explain. Where the site's own mechanics echo
+  the material (toggling a section *is* an invalidation), use that rather than
+  hiding it.
+- **Think about structure.** The placeholder has one payload per section, but
+  there may be better cuts or sections than the current shape suggests. The
+  section headings and the prose count as fair game; the *step* structure is
+  fixed. If something fits better as a different set of sections, propose it
+  with confidence and a reason.
+- **Keep numbers and claims honest.** Facts are the deal. If the research
+  contradicts a placeholder figure or a claim, fix it — flag it in the diff if
+  it's load-bearing.
 
 ## What "holds up under misuse" means here
 
