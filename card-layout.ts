@@ -37,6 +37,12 @@ const EDGE_PX = 8;
  *  the offset (rather than clamping the result into the viewport) keeps a
  *  dragged card's position stable when the page is scrolled or resized. */
 const MAX_DRAG_Y_PX = 800;
+/** Spacing between the vertical legs of two routed leaders, and between the
+ *  horizontal corridors they turn into. Every dot sits in the same gutter
+ *  column, so without a lane of its own each route runs down the identical
+ *  line and there's no telling which card belongs to which snippet. */
+const LANE_STEP_PX = 9;
+const CORRIDOR_STEP_PX = 6;
 
 /** How far a card has been dragged from where this pass would have put it. */
 export interface Offset {
@@ -160,10 +166,15 @@ function markerCentre(card: Card): { x: number; y: number } | undefined {
  *
  * Below the box it has to be routed rather than direct: a straight line from a
  * dot at the box's right edge to a card underneath it cuts diagonally across
- * the JSON. So it drops down the marker gutter — the one column of the box with
- * no text in it — into the corridor between box and cards, and only then runs
- * sideways. `fan` offsets each card's corridor slightly so two routes sharing it
- * don't overlap into one line.
+ * the JSON. So it steps sideways into a lane of its own, drops down the marker
+ * gutter — the one column of the box with no text in it — into a corridor
+ * between box and cards, and only then runs across to its card.
+ *
+ * The lane and the corridor are both per-card. Every dot sits at the same x, so
+ * routes that dropped straight down from them ran along the identical path and
+ * you couldn't tell which card went with which snippet. Lines may still cross
+ * where the cards' order doesn't match their dots'; crossing is legible, sharing
+ * a path isn't.
  *
  * A dragged card gets the straight line whichever zone it's in: once it's been
  * moved by hand the corridor may be nowhere near it, and a route through a
@@ -174,7 +185,7 @@ function route(
   card: Card,
   zone: Zone,
   payload: DOMRect,
-  fan: number,
+  index: number,
 ): Array<{ x: number; y: number }> {
   const { x, y, width, height } = card.box;
   const nearest = {
@@ -183,22 +194,26 @@ function route(
   };
   if (zone !== "below" || isDragged(card.offset)) return [from, nearest];
 
-  const corridorY = payload.bottom + GAP_PX / 2 + fan;
+  // Lanes stay inside the box's right-hand padding, which holds the markers and
+  // no text; clamped so a narrow payload doesn't push them over the border.
+  const laneX = Math.min(from.x + LANE_STEP_PX * (index + 1), payload.right - 4);
+  const corridorY = payload.bottom + GAP_PX / 2 + index * CORRIDOR_STEP_PX;
   const inset = Math.min(14, width / 2);
-  const targetX = Math.min(Math.max(from.x, x + inset), x + width - inset);
+  const targetX = Math.min(Math.max(laneX, x + inset), x + width - inset);
   return [
     from,
-    { x: from.x, y: corridorY },
+    { x: laneX, y: from.y },
+    { x: laneX, y: corridorY },
     { x: targetX, y: corridorY },
     { x: targetX, y },
   ];
 }
 
-function drawLeader(card: Card, zone: Zone, payload: DOMRect, fan: number): void {
+function drawLeader(card: Card, zone: Zone, payload: DOMRect, index: number): void {
   const from = markerCentre(card);
   if (!from) return;
   const origin = card.region.getBoundingClientRect();
-  const points = route(from, card, zone, payload, fan);
+  const points = route(from, card, zone, payload, index);
 
   // The dot is under the card: there's nothing to join, and a stub would just
   // poke out from beneath it.
@@ -274,7 +289,7 @@ function layoutPayload(payload: HTMLElement): void {
     card.el.style.left = `${Math.round(card.box.x - origin.left)}px`;
     card.el.style.top = `${Math.round(card.box.y - origin.top)}px`;
     card.el.style.transform = "none";
-    drawLeader(card, zone, payloadRect, index * 4);
+    drawLeader(card, zone, payloadRect, index);
   });
 }
 

@@ -113,12 +113,25 @@ function resolveRegions(payload: Payload): Region[] {
   return buildRegionTree(regions);
 }
 
-/** Indentation as padding, not literal spaces, so wrapped lines hang-indent. */
+/**
+ * Indentation as padding, not literal spaces, so wrapped lines hang-indent.
+ *
+ * The text sits in its own inline element inside the full-width line, so the
+ * two can be told apart: the text box hugs the characters, and everything else
+ * in the line — the indent, and the empty run to the right of the code — is the
+ * line element itself. That's what lets a click in the blank space open an
+ * annotation while a click on the code still starts a selection, and it carries
+ * the cursor change that advertises the difference.
+ */
 function renderLine(line: PayloadLine, enclosingDepth: number): HTMLElement {
   const el = document.createElement("span");
   el.className = "payload-line";
   el.style.setProperty("--indent", String(Math.max(0, line.depth - enclosingDepth)));
-  el.innerHTML = highlightLine(line.text);
+
+  const text = document.createElement("span");
+  text.className = "payload-line-text";
+  text.innerHTML = highlightLine(line.text);
+  el.append(text);
   return el;
 }
 
@@ -337,5 +350,31 @@ export function renderPayload(payload: Payload, options: PayloadViewOptions): HT
   pre.append(code);
   figure.append(pre);
 
+  pre.addEventListener("click", (event) => toggleFromBlankSpace(event, options));
+
   return figure;
+}
+
+/**
+ * Opens (or closes) an annotation when its region is clicked anywhere that
+ * isn't code you might have been trying to select. The marker is a small
+ * target, and the whole region is already outlined on hover as though it were
+ * the thing you were pointing at — so it may as well be.
+ */
+function toggleFromBlankSpace(event: MouseEvent, options: PayloadViewOptions): void {
+  const target = event.target as HTMLElement;
+
+  // The marker and the card handle their own clicks (and stop propagation), so
+  // this is really about clicks that landed on the code itself.
+  if (target.closest(".annotation-marker, .annotation-card")) return;
+  if (target.closest(".payload-line-text")) return;
+
+  // A drag that selected something isn't a click on blank space, even if it
+  // finished in it.
+  const selection = window.getSelection();
+  if (selection && !selection.isCollapsed) return;
+
+  const region = target.closest<HTMLElement>(".payload-region");
+  const index = Number(region?.dataset.annotation);
+  if (region && Number.isInteger(index)) options.onToggle(index);
 }

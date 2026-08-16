@@ -385,7 +385,14 @@ a {
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent, rgb(201 151 63 / 70%), transparent);
-  animation: peek-wipe 0.55s ease-out;
+  pointer-events: none;
+
+  /* `forwards` matters: without it the overlay drops back to its untransformed
+     position when the animation ends — parked squarely over the word, which
+     left the next step looking highlighted until the next re-render cleared it.
+     Holding the final keyframe leaves it translated off the end instead, where
+     the peek's overflow: hidden clips it. */
+  animation: peek-wipe 0.55s ease-out forwards;
 }
 
 /* Gold fill regardless of theme (see the --gold comment above) — this and
@@ -684,15 +691,25 @@ a {
 
 /* An annotated region of the payload. Its extent is shown on hover (before
    you commit to opening it) and held while its card is open. `outline` rather
-   than `border` so switching state can't reflow the code by a pixel. */
+   than `border` so switching state can't reflow the code by a pixel.
+
+   Clickable anywhere that isn't code — pointer over the indent and the blank
+   run to the right of each line, I-beam over the characters themselves, so the
+   two behaviours are advertised before you click rather than discovered
+   after. */
 .payload-region {
   position: relative;
   border-radius: 0.25rem;
+  cursor: pointer;
   transition:
     background 0.15s ease,
     outline-color 0.15s ease;
   outline: 1px dashed transparent;
   outline-offset: 3px;
+}
+
+.payload-region .payload-line-text {
+  cursor: text;
 }
 
 /* Nested regions are ancestors of each other, so a plain :hover would outline
