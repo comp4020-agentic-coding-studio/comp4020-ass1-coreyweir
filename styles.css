@@ -248,7 +248,11 @@ a {
 
 /* Every step-nav re-render creates fresh elements (see fillStepNav), so a
    plain `animation` (rather than a `transition`, which needs an existing
-   element to change) plays automatically each time the step changes. */
+   element to change) plays automatically on creation. That's also why it's
+   gated behind .is-entering: the nav is rebuilt on *every* render, including
+   the ones caused by opening a section or a card, and an ungated animation made
+   the headings blink out and slide back every time you toggled anything. The
+   class is only added when the render is a move to another step. */
 @keyframes step-heading-in {
   from {
     opacity: 0;
@@ -285,6 +289,9 @@ a {
   font-weight: 700;
   font-size: 1.85rem;
   color: var(--ink);
+}
+
+.step-current-title.is-entering {
   animation: step-heading-in 0.3s ease both;
 }
 
@@ -316,6 +323,9 @@ a {
   white-space: nowrap;
   cursor: pointer;
   transition: transform 0.2s ease;
+}
+
+.step-peek.is-entering {
   animation: step-peek-in 0.3s ease both;
 }
 

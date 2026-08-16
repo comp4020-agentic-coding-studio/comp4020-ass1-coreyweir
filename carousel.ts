@@ -50,6 +50,20 @@ function hasState(sections: SectionState[]): boolean {
   );
 }
 
+interface RenderOptions {
+  /** Element to put focus on afterwards, since this rebuilds the step's DOM. */
+  focusKey?: string;
+  /** This render follows a cache flush, so the flush should be shown. */
+  flushed?: boolean;
+  /**
+   * This render is a move to a different step, rather than a toggle within the
+   * one already on screen. Only then do the nav's headings animate in: they're
+   * rebuilt on every render, so an unconditional entry animation made them
+   * vanish and slide back every time a section or a card was opened.
+   */
+  entering?: boolean;
+}
+
 interface SectionHandlers {
   onToggleSection: () => void;
   onToggleAnnotation: (annotationIndex: number) => void;
@@ -199,7 +213,12 @@ function fillCacheTally(tally: HTMLElement, count: number, flushed: boolean): vo
 /** Fills the static `#step-nav` landmark (see index.html) with this render's
  * arrows and peeks. It's hydrated in place rather than recreated, so the
  * built HTML always has a real `<nav>` even before this script runs. */
-function fillStepNav(nav: HTMLElement, index: number, flushed: boolean): void {
+function fillStepNav(
+  nav: HTMLElement,
+  index: number,
+  flushed: boolean,
+  entering: boolean,
+): void {
   nav.replaceChildren();
 
   const prevStep = STEPS[index - 1];
@@ -222,6 +241,7 @@ function fillStepNav(nav: HTMLElement, index: number, flushed: boolean): void {
   const prevPeek = document.createElement("button");
   prevPeek.type = "button";
   prevPeek.className = "step-peek step-peek-prev";
+  if (entering) prevPeek.classList.add("is-entering");
   prevPeek.textContent = prevStep?.title ?? "";
   prevPeek.disabled = !prevStep;
   if (prevStep) prevPeek.setAttribute("aria-label", `Go back to ${prevStep.title}`);
@@ -229,12 +249,14 @@ function fillStepNav(nav: HTMLElement, index: number, flushed: boolean): void {
 
   const currentTitle = document.createElement("h2");
   currentTitle.className = "step-current-title";
+  if (entering) currentTitle.classList.add("is-entering");
   currentTitle.textContent = current.title;
   nav.append(currentTitle);
 
   const nextPeek = document.createElement("button");
   nextPeek.type = "button";
   nextPeek.className = "step-peek step-peek-next";
+  if (entering) nextPeek.classList.add("is-entering");
   nextPeek.textContent = nextStep?.title ?? "";
   nextPeek.disabled = !nextStep;
   // The next step's name is the only piece of "downstream" on screen, so it's
@@ -291,11 +313,12 @@ export function mountCarousel(root: HTMLElement): void {
    * longer exists afterwards. `focusKey` names its replacement, otherwise a
    * keyboard user is dumped back at the top of the document on every keypress.
    */
-  function render(focusKey?: string, flushed = false): void {
+  function render(options: RenderOptions = {}): void {
+    const { focusKey, flushed = false, entering = false } = options;
     const step = STEPS[state.index];
     if (!step) throw new Error(`No step at index ${state.index}`);
 
-    fillStepNav(nav!, state.index, flushed);
+    fillStepNav(nav!, state.index, flushed, entering);
     fillCacheTally(tally!, state.invalidations, flushed);
     cardRoot!.replaceChildren();
 
@@ -344,13 +367,13 @@ export function mountCarousel(root: HTMLElement): void {
     const clamped = Math.min(Math.max(newIndex, 0), STEPS.length - 1);
     if (clamped === state.index) return;
     state.index = clamped;
-    render();
+    render({ entering: true });
   }
 
   /** Any change to a step's expand state is an edit to the prefix. */
   function afterEdit(focusKey?: string): void {
     const flushed = invalidateAfter(state.index);
-    render(focusKey, flushed);
+    render({ focusKey, flushed });
   }
 
   function toggleSection(sectionIndex: number): void {
@@ -434,5 +457,5 @@ export function mountCarousel(root: HTMLElement): void {
   });
 
   watchCardLayout(cardRoot);
-  render();
+  render({ entering: true });
 }
