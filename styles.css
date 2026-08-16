@@ -231,6 +231,36 @@ a {
   perspective: 700px;
 }
 
+/* Every step-nav re-render creates fresh elements (see fillStepNav), so a
+   plain `animation` (rather than a `transition`, which needs an existing
+   element to change) plays automatically each time the step changes. */
+@keyframes step-heading-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Opacity-only: the peeks already carry a rotateY/scale transform (and it
+   differs prev vs. next, and again on hover), and an animation's keyframes
+   fully replace `transform` for as long as `animation-fill-mode` holds them
+   — using the translateY version above here would permanently wipe out
+   that tilt the moment the animation finished. */
+@keyframes step-peek-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 /* Sans-serif for the active heading only — an experiment in contrasting it
    against the peeks either side, which stay in the serif (see CLAUDE.md). */
 .step-current-title {
@@ -240,9 +270,18 @@ a {
   font-weight: 700;
   font-size: 1.85rem;
   color: var(--ink);
+  animation: step-heading-in 0.3s ease both;
 }
 
+/* The peeks are <button>s (see fillStepNav) so they can be clicked through
+   to that step, but reset back to plain text — no border, background or
+   cursor chrome to mark them as buttons; the hover/focus scale below is the
+   only hint they're interactive. */
 .step-peek {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
   text-align: center;
   color: var(--gold-dim);
   font-family: var(--font-serif);
@@ -251,7 +290,19 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
   transition: transform 0.2s ease;
+  animation: step-peek-in 0.3s ease both;
+}
+
+.step-peek:disabled {
+  cursor: default;
+}
+
+.step-peek:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 /* The fade lives on the peek text only (never the arrows, which must stay
@@ -268,6 +319,19 @@ a {
   transform: rotateY(-22deg) scale(0.82);
   transform-origin: left center;
   mask-image: linear-gradient(to right, black 40%, rgb(0 0 0 / 45%) 100%);
+}
+
+/* The hover/focus "grow a little" affordance from CLAUDE.md — composed with
+   (not replacing) the base rotateY tilt, so it still bumps up in size
+   rather than snapping flat. */
+.step-peek-prev:focus-visible,
+.step-peek-prev:hover:not(:disabled) {
+  transform: rotateY(22deg) scale(0.92);
+}
+
+.step-peek-next:focus-visible,
+.step-peek-next:hover:not(:disabled) {
+  transform: rotateY(-22deg) scale(0.92);
 }
 
 /* Gold fill regardless of theme (see the --gold comment above) — this and

@@ -77,10 +77,16 @@ function fillStepNav(nav: HTMLElement, index: number): void {
   prevArrow.disabled = !prevStep;
   nav.append(prevArrow);
 
-  const prevPeek = document.createElement("span");
+  // The peeks are buttons, not just decoration — clicking one goes to that
+  // (adjacent) step, same as the arrow beside it. Deliberately no link/button
+  // styling, so they read as the same muted preview text as before; a hover
+  // effect is the only sign they're interactive (see CLAUDE.md).
+  const prevPeek = document.createElement("button");
+  prevPeek.type = "button";
   prevPeek.className = "step-peek step-peek-prev";
-  prevPeek.setAttribute("aria-hidden", "true");
   prevPeek.textContent = prevStep?.title ?? "";
+  prevPeek.disabled = !prevStep;
+  if (prevStep) prevPeek.setAttribute("aria-label", `Go back to ${prevStep.title}`);
   nav.append(prevPeek);
 
   const currentTitle = document.createElement("h2");
@@ -88,10 +94,12 @@ function fillStepNav(nav: HTMLElement, index: number): void {
   currentTitle.textContent = current.title;
   nav.append(currentTitle);
 
-  const nextPeek = document.createElement("span");
+  const nextPeek = document.createElement("button");
+  nextPeek.type = "button";
   nextPeek.className = "step-peek step-peek-next";
-  nextPeek.setAttribute("aria-hidden", "true");
   nextPeek.textContent = nextStep?.title ?? "";
+  nextPeek.disabled = !nextStep;
+  if (nextStep) nextPeek.setAttribute("aria-label", `Go on to ${nextStep.title}`);
   nav.append(nextPeek);
 
   const nextArrow = document.createElement("button");
@@ -187,8 +195,8 @@ export function mountCarousel(root: HTMLElement): void {
   root.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     if (target.closest(".step-toggle")) toggleExpanded();
-    else if (target.closest(".step-arrow-prev")) goTo(state.index - 1);
-    else if (target.closest(".step-arrow-next")) goTo(state.index + 1);
+    else if (target.closest(".step-arrow-prev, .step-peek-prev")) goTo(state.index - 1);
+    else if (target.closest(".step-arrow-next, .step-peek-next")) goTo(state.index + 1);
   });
 
   window.addEventListener("keydown", (event) => {
