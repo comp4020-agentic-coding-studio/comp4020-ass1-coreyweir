@@ -22,6 +22,25 @@ match stale intentions.
   for that stage), with highlighting and annotations pointing at what matters.
 - Overview line at the top stating the point of the site, plain and short.
 
+### Expand state as a cache (the caching step, enacted)
+
+Which payloads are expanded is remembered as you move back and forth — until
+you change something. Toggling a step's expanded/collapsed state (not just
+re-viewing an already-expanded one) invalidates every later step's expand
+state, resetting it to collapsed; steps before the one you touched are
+untouched. This is a deliberate, simplified echo of prefix caching: edit
+something upstream and everything computed downstream of it has to be
+recomputed, everything before the edit stays valid. Make the invalidation
+moment legible when it happens (a beat, a flush/ripple, a label) rather than
+silently collapsing things — the losing-your-place moment is the point, not a
+bug to hide.
+
+Two ways to surface this that are both worth trying, not a decided choice yet:
+a small on-page tally of invalidation events (if there's screen space for it
+without cluttering the layout), and/or a nod to it in the caching step's own
+content — which conveniently comes last, so by the time the copy explains
+caching the reader has already lived through a cache miss or two.
+
 ## Content: placeholder-quality is fine for now
 
 I don't have the real internals content ready — that's separate prep work
