@@ -35,12 +35,12 @@ export interface Step {
 
 export const STEPS: Step[] = [
   {
-    id: "loop",
-    title: "The loop",
-    summary: "Every turn resends the whole conversation and waits for text or a tool call back.",
+    id: "overview",
+    title: "Overview",
+    summary: "Underneath everything else here is one basic loop: resend the conversation, wait for text or a tool call back.",
     body: [
-      "Claude Code doesn't hold a running conversation inside the model the way a phone call holds a conversation between two people. Every turn, the harness sends the entire message history back to the model from scratch, and the model replies with either plain text or a request to run a tool.",
-      "There's no memory on the model's side between requests — anything it seems to \"remember\" is just because the harness resent it. The loop ends when a reply comes back with no tool call attached: that's the model saying it's done.",
+      "Skills, tools, compaction and caching are all variations on one underlying mechanism — a loop. Claude Code doesn't hold a running conversation inside the model the way a phone call holds a conversation between two people: every turn, the harness sends the entire message history back to the model from scratch, and the model replies with either plain text or a request to run a tool.",
+      "There's no memory on the model's side between requests — anything it seems to \"remember\" is just because the harness resent it. The loop ends when a reply comes back with no tool call attached: that's the model saying it's done. Everything in the rest of this walkthrough is a variation on what gets added to, or trimmed from, what's resent each turn.",
     ],
     payloads: [
       {
