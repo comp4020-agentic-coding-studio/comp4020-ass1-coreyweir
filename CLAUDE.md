@@ -36,13 +36,26 @@ the number. Cards are closable, several can be open, and Escape clears them.
 Card placement, in preference order — the rule being "land in empty space":
 
 - Right of the box, each card level with its own region.
-- Below the box, flowed into rows. Always has room, because it can grow
-  downwards.
+- Below the box, flowed into rows.
+- Above the box, when the box's bottom sits near the bottom of the window and
+  cards below it would open off-screen — the worst outcome available, since the
+  reader clicks and it looks like nothing happened.
+- If neither above nor below has room, the stack slides back into view and
+  overlaps the payload. Overlap is the lesser loss.
 - All of a payload's cards go to the same zone. A mix of one beside the box and
   another under it reads as a bug even when each is individually sensible.
 - Overlapping a heading or the prose is fine: cards are closable and draggable,
   so overlap is recoverable. Going off-screen isn't, and horizontal scroll is
   never acceptable — that's the constraint the placement pass exists to satisfy.
+- Cards may not cover the carousel's own nav, though. Covering prose is
+  recoverable; covering the arrows and the step title looks like the site has
+  stopped working rather than like something is in the way, so the room above
+  the payload is measured from the nav rather than from the top of the window.
+- Bounds come from `documentElement.clientWidth/Height`, not `window.inner*`,
+  which includes the classic scrollbar gutter — measuring from innerWidth lets a
+  card sit under the scrollbar and forces exactly the horizontal scroll this is
+  meant to prevent. It can't be caught in a headless browser, which reports a
+  scrollbar width of zero.
 
 A "left of the box" zone was planned for the stacked layout, built, and then
 removed: the payload always spans the content column, so the margin beside it is

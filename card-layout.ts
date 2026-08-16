@@ -8,10 +8,12 @@
 // acceptable, so this pass finds somewhere the cards do fit:
 //
 //  - Right of the box — the default, each card level with its own region.
-//  - Below the box, flowed into rows — the fallback that always has room,
-//    because it can grow downwards. It overlaps the prose, which is fine: a
-//    card is closable and draggable, so overlap is recoverable in a way that
-//    being off-screen isn't.
+//  - Below the box, flowed into rows. Overlaps the prose, which is fine: a card
+//    is closable and draggable, so overlap is recoverable in a way that being
+//    off-screen isn't.
+//  - Above the box, when the box's bottom edge is near the bottom of the window
+//    and cards placed below it would open off-screen — the worst outcome
+//    available, since the reader clicks and apparently nothing happens.
 //
 // A "left of the box" zone was tried and removed: the payload always spans the
 // content column, so the margin beside it is (viewport − 1024px) / 2, which
@@ -66,7 +68,39 @@ interface Card {
   offset: Offset;
 }
 
-type Zone = "right" | "below";
+type Zone = "right" | "below" | "above";
+
+/**
+ * The *visible* viewport, excluding the classic scrollbar gutter.
+ *
+ * Not window.innerWidth, which includes it: bounds computed from innerWidth let
+ * a card extend into the space the vertical scrollbar occupies, and the document
+ * then overflows horizontally — the one failure this module exists to prevent.
+ * It doesn't show up in a headless browser, which reports a scrollbar width of
+ * zero, so it survived every check here and turned up on a real machine.
+ */
+function viewportWidth(): number {
+  return document.documentElement.clientWidth;
+}
+
+function viewportHeight(): number {
+  return document.documentElement.clientHeight;
+}
+
+/**
+ * The highest a card may go: below the carousel's own nav.
+ *
+ * Covering prose is recoverable — you can read it once the card is closed. But
+ * the arrows and the step title are how you get anywhere, and a card sitting on
+ * top of them looks like the site has stopped working rather than like something
+ * is in the way. So the room above the payload is measured from the nav, not the
+ * top of the window, and a stack that only fits by covering the controls doesn't
+ * count as fitting.
+ */
+function ceiling(): number {
+  const nav = document.querySelector("#step-nav")?.getBoundingClientRect().bottom ?? 0;
+  return Math.max(EDGE_PX, nav + GAP_PX);
+}
 
 export function readOffset(el: HTMLElement): Offset {
   return {
@@ -88,7 +122,7 @@ function isDragged(offset: Offset): boolean {
 }
 
 function fitsHorizontally(box: Box): boolean {
-  return box.x >= EDGE_PX && box.x + box.width <= window.innerWidth - EDGE_PX;
+  return box.x >= EDGE_PX && box.x + box.width <= viewportWidth() - EDGE_PX;
 }
 
 /**
@@ -113,39 +147,112 @@ function placeRight(cards: Card[], payload: DOMRect): boolean {
     card.box = { x, y, width, height };
     if (!isDragged(card.offset)) previousBottom = y + height;
   }
+
+  // In a short window a card level with its region can still hang off the
+  // bottom, so the whole group slides back into view together — keeping their
+  // spacing, and giving up being exactly level with their own lines, which is
+  // the lesser loss. Dragged cards are left where the reader put them.
+  const placed = cards.filter((card) => !isDragged(card.offset));
+  if (placed.length > 0) {
+    const top = Math.min(...placed.map((card) => card.box.y));
+    const bottom = Math.max(...placed.map((card) => card.box.y + card.box.height));
+    const shift = Math.max(
+      Math.min(0, viewportHeight() - EDGE_PX - bottom),
+      ceiling() - top,
+    );
+    if (shift !== 0) {
+      for (const card of placed) card.box = { ...card.box, y: card.box.y + shift };
+    }
+  }
   return true;
 }
 
 /**
- * Cards flowed into rows under the box, left to right. Rows start at the box's
- * left edge so they never spill sideways over the prose, but they may run past
- * its right edge into the gutter, which is empty — being under the box matters,
- * being no wider than it doesn't.
+ * Packs the cards into rows starting at the box's left edge and y = 0, and
+ * returns the height of the block. Rows start at the box's left edge so they
+ * never spill sideways over the prose, but they may run past its right edge into
+ * the gutter, which is empty — being under the box matters, being no wider than
+ * it doesn't.
  */
-function placeBelow(cards: Card[], payload: DOMRect): void {
-  const rowRight = window.innerWidth - EDGE_PX;
-  let x = payload.left;
-  let y = payload.bottom + GAP_PX;
-  let rowHeight = 0;
+function flowRows(cards: Card[], payload: DOMRect): number {
+  const rowRight = viewportWidth() - EDGE_PX;
+  const widthOf = (row: Card[]): number =>
+    row.reduce((total, card) => total + card.box.width, 0) +
+    STACK_GAP_PX * Math.max(0, row.length - 1);
 
+  // Rows are packed against the width of the *viewport*, not the width of the
+  // payload box, and then aligned to the box's left edge — sliding left only as
+  // far as they must to stay on screen. Wrapping instead would put two cards in
+  // a column, and in the zone above the box a column forces the upper card's
+  // leader to run behind the lower card, which reads as the wrong line.
+  const rows: Card[][] = [];
   for (const card of cards) {
-    const { width, height } = card.box;
-    const startsRow = x === payload.left;
-    if (!startsRow && x + width > rowRight) {
-      x = payload.left;
-      y += rowHeight + STACK_GAP_PX;
-      rowHeight = 0;
-    }
-    card.box = { x, y, width, height };
-    x += width + STACK_GAP_PX;
-    rowHeight = Math.max(rowHeight, height);
+    const row = rows[rows.length - 1];
+    if (!row || widthOf([...row, card]) > rowRight - EDGE_PX) rows.push([card]);
+    else row.push(card);
   }
+
+  let y = 0;
+  rows.forEach((row, index) => {
+    const width = widthOf(row);
+    let x = Math.max(EDGE_PX, Math.min(payload.left, rowRight - width));
+    let rowHeight = 0;
+    for (const card of row) {
+      card.box = { ...card.box, x, y };
+      x += card.box.width + STACK_GAP_PX;
+      rowHeight = Math.max(rowHeight, card.box.height);
+    }
+    y += rowHeight + (index === rows.length - 1 ? 0 : STACK_GAP_PX);
+  });
+  return y;
+}
+
+/**
+ * Cards in rows below the box, or above it when below wouldn't be on screen.
+ *
+ * Below is preferred — it reads in the same direction as the page — but the
+ * payload can easily sit with its bottom edge near the bottom of the window, and
+ * cards placed under it then open off-screen entirely, which is the worst
+ * outcome available: the reader clicks and apparently nothing happens. Above
+ * covers the section's own heading and some prose, which is recoverable.
+ *
+ * The choice is made from the room visible when the card is opened, so it can go
+ * stale if the page is then scrolled. Re-deciding on scroll would mean cards
+ * hopping from one side of the payload to the other as the page moves, which is
+ * worse than a stale-but-stable choice.
+ */
+function placeStacked(cards: Card[], payload: DOMRect): Zone {
+  const height = flowRows(cards, payload);
+  const roomBelow = viewportHeight() - EDGE_PX - (payload.bottom + GAP_PX);
+  const roomAbove = payload.top - GAP_PX - ceiling();
+
+  const zone: Zone =
+    height <= roomBelow
+      ? "below"
+      : height <= roomAbove
+        ? "above"
+        : // Neither fits: take the roomier side and let the page scroll.
+          roomAbove > roomBelow
+          ? "above"
+          : "below";
+
+  // When neither side has room the stack still has to be visible, so it slides
+  // back into view and overlaps the payload rather than hanging off the edge.
+  // Overlapping the JSON is recoverable — the card is closable and draggable —
+  // and a card that opens off-screen looks like nothing happened at all.
+  const wanted =
+    zone === "below" ? payload.bottom + GAP_PX : payload.top - GAP_PX - height;
+  const originY = Math.max(
+    ceiling(),
+    Math.min(wanted, viewportHeight() - EDGE_PX - height),
+  );
+  for (const card of cards) card.box = { ...card.box, y: card.box.y + originY };
+  return zone;
 }
 
 function chooseZone(cards: Card[], payload: DOMRect): Zone {
   if (placeRight(cards, payload)) return "right";
-  placeBelow(cards, payload);
-  return "below";
+  return placeStacked(cards, payload);
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -186,18 +293,42 @@ function route(
   zone: Zone,
   payload: DOMRect,
   index: number,
+  /** Right edge of the stack, when the cards are in a single column. */
+  columnRight: number | undefined,
 ): Array<{ x: number; y: number }> {
   const { x, y, width, height } = card.box;
   const nearest = {
     x: Math.min(Math.max(from.x, x), x + width),
     y: Math.min(Math.max(from.y, y), y + height),
   };
-  if (zone !== "below" || isDragged(card.offset)) return [from, nearest];
+  if (zone === "right" || isDragged(card.offset)) return [from, nearest];
+
+  // A single column of cards can't be entered through the edge facing the box:
+  // whichever card is nearer, the other one's leader has to run behind it, and a
+  // line that disappears under a card and stops looks like that card's line. So
+  // it goes round instead — out past the side of the column, along it, and into
+  // the card's own side, each card one step further out so the runs stay apart.
+  if (columnRight !== undefined) {
+    const laneX = Math.min(
+      columnRight + 6 + index * LANE_STEP_PX,
+      viewportWidth() - EDGE_PX - 1,
+    );
+    const approachY = y + height / 2;
+    return [
+      from,
+      { x: laneX, y: from.y },
+      { x: laneX, y: approachY },
+      { x: x + width, y: approachY },
+    ];
+  }
 
   // Lanes stay inside the box's right-hand padding, which holds the markers and
   // no text; clamped so a narrow payload doesn't push them over the border.
   const laneX = Math.min(from.x + LANE_STEP_PX * (index + 1), payload.right - 4);
-  const corridorY = payload.bottom + GAP_PX / 2 + index * CORRIDOR_STEP_PX;
+  const above = zone === "above";
+  const corridorY = above
+    ? payload.top - GAP_PX / 2 - index * CORRIDOR_STEP_PX
+    : payload.bottom + GAP_PX / 2 + index * CORRIDOR_STEP_PX;
   const inset = Math.min(14, width / 2);
   const targetX = Math.min(Math.max(laneX, x + inset), x + width - inset);
   return [
@@ -205,15 +336,22 @@ function route(
     { x: laneX, y: from.y },
     { x: laneX, y: corridorY },
     { x: targetX, y: corridorY },
-    { x: targetX, y },
+    // Meets the edge of the card that faces the box.
+    { x: targetX, y: above ? y + height : y },
   ];
 }
 
-function drawLeader(card: Card, zone: Zone, payload: DOMRect, index: number): void {
+function drawLeader(
+  card: Card,
+  zone: Zone,
+  payload: DOMRect,
+  index: number,
+  columnRight: number | undefined,
+): void {
   const from = markerCentre(card);
   if (!from) return;
   const origin = card.region.getBoundingClientRect();
-  const points = route(from, card, zone, payload, index);
+  const points = route(from, card, zone, payload, index, columnRight);
 
   // The dot is under the card: there's nothing to join, and a stub would just
   // poke out from beneath it.
@@ -272,12 +410,20 @@ function layoutPayload(payload: HTMLElement): void {
   const payloadRect = payload.getBoundingClientRect();
   const zone = chooseZone(cards, payloadRect);
 
+  // One card per row: no two share a top edge. Only then does a leader have to
+  // go round the side of the stack (see route()).
+  const isColumn =
+    cards.length > 1 && new Set(cards.map((card) => card.box.y)).size === cards.length;
+  const columnRight = isColumn
+    ? Math.max(...cards.map((card) => card.box.x + card.box.width))
+    : undefined;
+
   cards.forEach((card, index) => {
     // The drag offset is applied on top of the placement, not instead of it, so
     // a dragged card still travels with its region on a resize or a rewrap.
     // Only x is clamped to the viewport: horizontal scroll is the failure worth
     // preventing, and clamping y would tug cards about as the page is scrolled.
-    const maxX = Math.max(EDGE_PX, window.innerWidth - EDGE_PX - card.box.width);
+    const maxX = Math.max(EDGE_PX, viewportWidth() - EDGE_PX - card.box.width);
     card.box = {
       ...card.box,
       x: Math.min(Math.max(card.box.x + card.offset.dx, EDGE_PX), maxX),
@@ -289,7 +435,7 @@ function layoutPayload(payload: HTMLElement): void {
     card.el.style.left = `${Math.round(card.box.x - origin.left)}px`;
     card.el.style.top = `${Math.round(card.box.y - origin.top)}px`;
     card.el.style.transform = "none";
-    drawLeader(card, zone, payloadRect, index);
+    drawLeader(card, zone, payloadRect, index, columnRight);
   });
 }
 

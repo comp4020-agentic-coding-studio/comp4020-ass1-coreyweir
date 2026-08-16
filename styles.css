@@ -781,8 +781,10 @@ a {
 
   /* Never wider than the viewport it has to fit inside — at phone widths the
      fixed width alone would guarantee the horizontal overflow that
-     card-layout.ts is there to prevent. */
-  max-width: calc(100vw - 2rem);
+     card-layout.ts is there to prevent. The margin left over is also what a
+     leader line runs down when the cards stack into a column, so it's a little
+     wider than the page's own padding. */
+  max-width: calc(100vw - 2.75rem);
   padding: 0.7rem 0.85rem 0.8rem;
   border: 1px solid var(--accent);
   border-radius: 0.5rem;
