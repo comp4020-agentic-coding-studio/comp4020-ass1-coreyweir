@@ -199,7 +199,7 @@ a {
   background-repeat: no-repeat;
   background-position: left bottom;
   background-size: 100% 0.22em;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 40' preserveAspectRatio='none'%3E%3Cpath d='M4 12 Q150 36 296 12' fill='none' stroke='%23c9973f' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 40' preserveAspectRatio='none'%3E%3Cpath d='M4 28 Q150 4 296 28' fill='none' stroke='%23c9973f' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .intro-subtitle {
