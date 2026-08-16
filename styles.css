@@ -43,7 +43,12 @@
   --ink: #1a1a1a;
   --muted: #5b6270;
   --muted-dim: #9aa1b0;
-  --line: #d8dce3;
+
+  /* Darker than the dark theme's line is light, deliberately. Measured, the two
+     have near-identical contrast against their backgrounds (~1.4:1 each way) —
+     but a pale hairline on a bright page reads far weaker than a dark one on a
+     near-black page, and the section dividers had all but disappeared here. */
+  --line: #c3cad6;
   --accent: #0b5fff;
   --accent-ink: #fff;
   --accent-soft: #e8f0ff;
