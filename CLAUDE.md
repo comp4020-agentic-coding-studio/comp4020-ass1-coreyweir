@@ -139,16 +139,19 @@ strongest writing in the file, because it makes the reader the subject.
 - **The step headings are fixed.** Overview, Tools, Skills, Compaction, Caching
   — don't change them, and don't rename or reorder the steps. Keep every section
   with its payload (the section's own `title` may change).
-- **No payload edits.** The `data` values are the real, reference JSON for this
-  site. Don't reword or "fix" them, don't trim or add keys, don't adjust them
-  for tone — they're the anchor everything else hangs off. If the payload is
-  wrong, say so and raise it; don't silently improve it.
+- **The payloads are placeholder too.** The `data` values are invented examples
+  (the model name, the token counts, the fake `sum.ts` bug), not a reference
+  spec — replace them with the researched reality. But a payload is the anchor
+  of its section: the prose and every annotation must stay consistent with what
+  is actually shown in the JSON, so when the shape changes, the paths and notes
+  change with it. Don't write copy that describes a payload that isn't there.
 - **No structural, layout, or code changes.** This pass is copy only. If
   something isn't expressible in `steps.ts`, say so rather than reaching for
   other files.
-- The payload label (`request.json`, `usage.json`, …) and the annotation
-  `path` are functional: they locate a callout in the JSON. Never change a
-  `path` (the tests catch a stale one); the label may change.
+- The payload label (`request.json`, `usage.json`, …) may change. The
+  annotation `path` is functional in one narrow sense: it must resolve against
+  its payload's data, and the tests enforce that — update it to match a changed
+  payload. A stale path is a caught error, not a silent miss.
 
 ### Sources, and how to use them
 
