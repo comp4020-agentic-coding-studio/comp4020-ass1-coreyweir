@@ -16,6 +16,7 @@
   --code-ink: #d6dbe6;
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  --font-serif: "Fraunces", "Georgia", serif;
 }
 
 :root[data-theme="light"] {
@@ -142,23 +143,46 @@ a {
     0 0 28px 6px rgb(255 200 60 / 25%);
 }
 
-/* Intro: the block sits centred on the page, but the text inside it reads
-   left-justified rather than centred line-by-line. */
+/* Intro: title sits in a narrower centred block; the subtitle copy below it
+   is deliberately wider — as wide as the carousel section beneath both of
+   them — while both stay left-justified rather than centred line-by-line. */
 .intro {
-  max-width: 34rem;
   margin: 0 auto 2.5rem;
+}
+
+.intro-title {
+  max-width: 30rem;
+  margin: 0 auto 1.25rem;
   text-align: left;
 }
 
-.intro h1 {
+.intro-title h1 {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 2.5rem;
   letter-spacing: -0.01em;
-  margin: 0 0 1rem;
+  margin: 0;
 }
 
-.intro p {
+/* The one emphasised word: a different, more "typeset" face (Fraunces
+   italic) plus an underline, standing apart from the Space Grotesk used
+   everywhere else — a fun-explainer accent on the title, not the nav. */
+.title-emphasis {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.05em;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.14em;
+}
+
+.intro-subtitle {
+  text-align: left;
+}
+
+.intro-subtitle p {
   color: var(--muted);
   margin: 0.4rem 0;
 }
@@ -449,7 +473,7 @@ a {
     font-size: 1.4rem;
   }
 
-  .intro h1 {
+  .intro-title h1 {
     font-size: 1.9rem;
 
     /* Clears the fixed theme toggle, which sits over this top-right corner
