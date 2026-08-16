@@ -72,6 +72,15 @@ Build toward these from the start rather than bolting them on at the end:
 - Stack is the template default (Vite/TS/plain HTML) — no decision made to
   change it. If a real reason to switch shows up during prototyping, we'll do
   it deliberately and it'll be a visible change to this file, not a silent one.
+  Bringing in dependencies (fonts, a small library) or switching pieces of the
+  stack is fair game if there's a real reason — just make the reason visible
+  here rather than reaching for something silently.
+- Research tool order: try a plain `webfetch` first. Only fall back to the
+  `ddg_jina_fetch` MCP tool when `webfetch` errors or the page is clearly
+  client-side rendered (empty/near-empty markdown back), or when fetching a
+  PDF — `ddg_jina_fetch` goes through r.jina.ai and returns it as markdown.
+  Use `ddg_jina_search` for web search. `gh` is available for anything
+  GitHub-shaped (issues, PRs, releases, repo contents).
 
 ## Not in scope for this phase
 
