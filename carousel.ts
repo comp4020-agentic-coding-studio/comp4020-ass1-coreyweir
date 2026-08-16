@@ -38,6 +38,26 @@ function buildStepDetail(stepIndex: number): HTMLElement {
   return detail;
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** A bold chevron, drawn rather than set as a text glyph — text arrows
+ * render inconsistently thin across fonts/browsers and were getting lost
+ * against the button. */
+function buildChevron(direction: "left" | "right"): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "20");
+  svg.setAttribute("height", "20");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.classList.add("step-arrow-icon");
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", direction === "left" ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7");
+  svg.append(path);
+  return svg;
+}
+
 /** Fills the static `#step-nav` landmark (see index.html) with this render's
  * arrows and peeks. It's hydrated in place rather than recreated, so the
  * built HTML always has a real `<nav>` even before this script runs. */
@@ -53,7 +73,7 @@ function fillStepNav(nav: HTMLElement, index: number): void {
   prevArrow.type = "button";
   prevArrow.className = "step-arrow step-arrow-prev";
   prevArrow.setAttribute("aria-label", "Previous step");
-  prevArrow.textContent = "←";
+  prevArrow.append(buildChevron("left"));
   prevArrow.disabled = !prevStep;
   nav.append(prevArrow);
 
@@ -78,7 +98,7 @@ function fillStepNav(nav: HTMLElement, index: number): void {
   nextArrow.type = "button";
   nextArrow.className = "step-arrow step-arrow-next";
   nextArrow.setAttribute("aria-label", "Next step");
-  nextArrow.textContent = "→";
+  nextArrow.append(buildChevron("right"));
   nextArrow.disabled = !nextStep;
   nav.append(nextArrow);
 }

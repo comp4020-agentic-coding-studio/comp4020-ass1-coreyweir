@@ -181,7 +181,6 @@ a {
   margin-bottom: 1.5rem;
   padding: 0.5rem 0;
   perspective: 700px;
-  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
 }
 
 .step-current-title {
@@ -205,37 +204,59 @@ a {
   transition: transform 0.2s ease;
 }
 
+/* The fade lives on the peek text only (never the arrows, which must stay
+   fully visible/clickable) — and floors out at partial opacity rather than
+   fading to nothing, so the far side doesn't just vanish into the page
+   background in dark mode. */
 .step-peek-prev {
   transform: rotateY(22deg) scale(0.82);
   transform-origin: right center;
+  mask-image: linear-gradient(to left, black 40%, rgb(0 0 0 / 45%) 100%);
 }
 
 .step-peek-next {
   transform: rotateY(-22deg) scale(0.82);
   transform-origin: left center;
+  mask-image: linear-gradient(to right, black 40%, rgb(0 0 0 / 45%) 100%);
 }
 
 .step-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1.5px solid var(--muted);
+  background: var(--surface-alt);
   color: var(--ink);
-  font-size: 1.1rem;
-  line-height: 1;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 15%);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.step-arrow-icon path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .step-arrow:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
+  box-shadow: none;
   cursor: default;
 }
 
 .step-arrow:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
 }
 
 /* The step card itself */
