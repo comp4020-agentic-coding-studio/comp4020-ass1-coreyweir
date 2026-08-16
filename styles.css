@@ -356,7 +356,7 @@ a {
     box-shadow 0.15s ease;
 }
 
-.step-arrow-icon path {
+.chevron-icon path {
   fill: none;
   stroke: currentcolor;
   stroke-width: 2.6;
@@ -375,110 +375,191 @@ a {
   box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
 }
 
-/* The step card itself */
+/* The step's sections. Deliberately no panel or surface of their own — the
+   sections sit directly on the page, separated by hairlines, so the payload
+   window is the only thing on screen that reads as a container. */
 
-.carousel-step {
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--surface);
-}
-
-.step-header {
-  margin-bottom: 0.75rem;
-}
-
-.step-summary {
+.step-sections {
+  list-style: none;
   margin: 0;
-  color: var(--muted);
+  padding: 0;
 }
 
-/* A numbered heading that's obviously a link, not a boxed button — see
-   CLAUDE.md (style points iv/v/ix). */
-.step-toggle {
-  display: block;
+.step-section {
+  border-top: 1px solid var(--line);
+}
+
+.step-section:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.section-heading {
+  margin: 0;
+  font-weight: 500;
+}
+
+/* A row, not a boxed button: a gold circled number, the title as a link, and
+   a chevron pushed out to the far edge. The whole row is the hit target. */
+.section-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.85rem 0.25rem;
   border: none;
   background: none;
-  padding: 0;
-  margin-top: 0.6rem;
   font: inherit;
-  font-size: 1.05rem;
   color: var(--accent);
   cursor: pointer;
   text-align: left;
 }
 
-.step-toggle-num {
+.section-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1.5px solid var(--gold);
+  border-radius: 50%;
+  color: var(--gold);
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.step-toggle:hover .step-toggle-num,
-.step-toggle:hover {
+.section-title {
+  font-size: 1.15rem;
+}
+
+.section-toggle:hover .section-title {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.step-toggle-caret {
-  display: inline-block;
-  font-size: 0.75em;
+/* Brighten rather than fill: a gold fill would need its own foreground colour
+   that works in both themes, for no gain over a glow. */
+.section-toggle:hover .section-num {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgb(201 151 63 / 18%);
 }
 
-.step-detail {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line);
+.section-caret {
+  display: flex;
+  align-items: center;
+}
+
+.section-detail {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 1.5rem 2rem;
+  padding: 0.25rem 0.25rem 1.75rem;
 }
 
-.step-body p {
+.section-body p {
   margin-top: 0;
   color: var(--ink);
 }
 
-.step-payloads {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.section-body p:last-child {
+  margin-bottom: 0;
+}
+
+.section-payload {
   min-width: 0;
 }
 
 /* Payload / JSON view */
 
-.payload-block {
+/* Framed as a window onto the real request, not a labelled figure: the
+   payload *is* the subject, so it gets the chrome. Deliberately NOT
+   overflow: hidden — annotation cards are positioned outside this box and
+   must not be clipped by it. The corners are rounded on the bar and the code
+   separately instead. */
+.payload {
   margin: 0;
-  border-radius: 0.5rem;
-  overflow: hidden;
   border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--code-bg);
 }
 
-.payload-block figcaption {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.35rem 0.75rem;
+.payload-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0.55rem 0.55rem 0 0;
+  background: var(--code-bg);
+}
+
+.payload-lights {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.payload-light {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+
+.payload-light-close {
+  background: #ec6a5f;
+}
+
+.payload-light-min {
+  background: #f4bf50;
+}
+
+.payload-light-max {
+  background: #61c554;
+}
+
+.payload-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted-dim);
 }
 
 .payload-json {
   margin: 0;
-  background: var(--code-bg);
   color: var(--code-ink);
-  padding: 0.75rem 0.9rem;
+  padding: 0.8rem 0.9rem;
   font-family: var(--font-mono);
   font-size: 0.8rem;
+
+  /* Roomier than prose needs: a region's outline sits 3px outside its lines,
+     and at a tighter line-height it collides with the line above. */
+  line-height: 1.75;
 }
 
+/* The right padding reserves a gutter for the annotation markers, so markers
+   at every nesting depth line up in one column at the box's edge rather than
+   stepping inwards with their region. */
 .payload-json code {
   display: block;
+  padding-right: 1.9rem;
+}
+
+/* Indentation as padding rather than literal spaces (see payload-lines.ts):
+   a long line that wraps then hangs at its own indent instead of resetting to
+   the left edge. Each level only adds its own step in, so a region's box
+   starts at its first key. */
+.payload-line,
+.payload-region {
+  display: block;
+  padding-left: calc(var(--indent, 0) * 2ch);
 }
 
 .payload-line {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  min-height: 1.4em;
 }
 
 .tok-key {
@@ -495,59 +576,93 @@ a {
   color: #f2b366;
 }
 
+/* An annotated region of the payload. Its extent is shown on hover (before
+   you commit to opening it) and held while its card is open. `outline` rather
+   than `border` so switching state can't reflow the code by a pixel. */
+.payload-region {
+  position: relative;
+  border-radius: 0.25rem;
+  transition:
+    background 0.15s ease,
+    outline-color 0.15s ease;
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+}
+
+/* Nested regions are ancestors of each other, so a plain :hover would outline
+   two boxes at once — this keeps it on the innermost region under the pointer. */
+.payload-region:hover:not(:has(.payload-region:hover)) {
+  outline-color: var(--accent);
+}
+
+.payload-region[data-open="true"] {
+  outline-style: solid;
+  outline-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Sits in the gutter reserved by the code block's right padding, vertically
+   centred on its region by layout alone — no measurement, so it stays put
+   through a rewrap or a resize. */
 .annotation-marker {
-  display: inline-flex;
+  position: absolute;
+  top: 50%;
+  right: -1.5rem;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-ink);
-  border: none;
   font-family: var(--font-mono);
   font-size: 0.65rem;
   line-height: 1;
   cursor: pointer;
-  vertical-align: middle;
-  padding: 0;
+  transform: translateY(-50%);
+  transition:
+    width 0.18s ease,
+    height 0.18s ease,
+    transform 0.15s ease;
 }
 
-.annotation-marker.is-active {
-  background: #ff8a3d;
-  color: #1a1005;
+.annotation-marker:hover {
+  transform: translateY(-50%) scale(1.15);
 }
 
-.payload-annotations {
-  margin: 0;
-  padding: 0.6rem 0.9rem 0.6rem 1.6rem;
-  background: var(--surface-alt);
-  color: var(--ink);
-  font-size: 0.85rem;
+/* Once the card is open it carries the number, so the marker collapses to the
+   dot the leader line meets. */
+.payload-region[data-open="true"] > .annotation-marker {
+  width: 0.5rem;
+  height: 0.5rem;
 }
 
-.payload-annotations li {
-  cursor: pointer;
-  padding: 0.15rem 0;
+.payload-region[data-open="true"] > .annotation-marker .annotation-marker-num {
+  display: none;
 }
 
-.payload-annotations li.is-active {
-  color: var(--accent);
-  font-weight: 600;
+/* Two columns stop working before the phone breakpoint does: the JSON is
+   monospaced and can't reflow below a certain width without wrapping every
+   line. Stacked, the payload goes ABOVE the prose — it's the thing the section
+   is about, and a couple of paragraphs is a lot to scroll past to reach it. */
+@media (width <= 900px) {
+  .section-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .section-payload {
+    order: -1;
+  }
 }
 
 /* Narrower than the assessment phone viewport (390px): stack everything */
 @media (width <= 700px) {
   body {
     padding: calc(1rem + 12px) 0.85rem 2rem;
-  }
-
-  .carousel-step {
-    padding: 1rem;
-  }
-
-  .step-detail {
-    grid-template-columns: 1fr;
   }
 
   .step-nav {
