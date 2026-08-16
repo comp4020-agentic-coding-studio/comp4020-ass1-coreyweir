@@ -14,9 +14,15 @@
   --accent-soft: rgb(125 171 255 / 16%);
   --code-bg: #0d0f16;
   --code-ink: #d6dbe6;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
   --font-serif: "Fraunces", "Georgia", serif;
+
+  /* The brand gold: deliberately the *same* value in both themes (not
+     redeclared below), so the buttons and title accent read as one
+     consistent colour whichever theme is active — only the page chrome
+     around them flips. */
+  --gold: #c9973f;
+  --gold-dim: #9c8256;
 }
 
 :root[data-theme="light"] {
@@ -66,6 +72,9 @@ a {
   border: 0;
 }
 
+/* Gold fill regardless of theme — the same solid colour as the carousel
+   arrows, so the two buttons on the page read as one colour theme rather
+   than a one-off accent (see the --gold comment above). */
 .theme-toggle {
   position: fixed;
   top: 1rem;
@@ -75,18 +84,19 @@ a {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: none;
+  background: var(--gold);
   border-radius: 50%;
   cursor: pointer;
   z-index: 10;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
   transition:
-    box-shadow 0.25s ease,
-    border-color 0.25s ease;
+    transform 0.15s ease,
+    box-shadow 0.25s ease;
 }
 
 .theme-toggle:hover {
-  border-color: var(--accent);
+  transform: scale(1.06);
 }
 
 .bulb-icon {
@@ -96,7 +106,7 @@ a {
 
 .bulb-glass {
   fill: none;
-  stroke: var(--muted);
+  stroke: var(--ink);
   stroke-width: 1.6;
   stroke-linejoin: round;
   transition:
@@ -106,38 +116,34 @@ a {
 
 .bulb-filament {
   fill: none;
-  stroke: var(--muted-dim);
+  stroke: var(--ink);
   stroke-width: 1.4;
   stroke-linecap: round;
+  opacity: 0.7;
   transition: stroke 0.25s ease;
 }
 
 .bulb-base {
   fill: none;
-  stroke: var(--muted);
+  stroke: var(--ink);
   stroke-width: 1.6;
   stroke-linecap: round;
 }
 
-/* Bulb "on": warm glow, regardless of which theme is active. Currently only
-   reachable in light mode (that's the whole point of the toggle), but the
-   glow is keyed off the bulb's own state, not the theme, in case that ever
-   changes. */
-:root[data-theme="light"] .bulb-glass {
-  fill: #ffd54a;
-  stroke: #f5a300;
-}
-
+/* Bulb "on": glowing, keyed off the bulb's own state, not the theme
+   directly — it's just currently only reachable in light mode, since
+   that's the whole point of the toggle. The icon itself stays var(--ink)
+   in both states (so it always reads against the gold button); only the
+   glow marks "on". */
 :root[data-theme="light"] .bulb-filament {
-  stroke: #8a5a00;
+  opacity: 1;
 }
 
 :root[data-theme="light"] .bulb-icon {
-  filter: drop-shadow(0 0 4px rgb(255 190 40 / 90%));
+  filter: drop-shadow(0 0 4px rgb(255 200 60 / 85%));
 }
 
 :root[data-theme="light"] .theme-toggle {
-  border-color: #f5a300;
   box-shadow:
     0 0 12px 2px rgb(255 200 60 / 55%),
     0 0 28px 6px rgb(255 200 60 / 25%);
@@ -145,41 +151,49 @@ a {
 
 /* Intro: title sits in a narrower centred block; the subtitle copy below it
    is deliberately wider — as wide as the carousel section beneath both of
-   them — while both stay left-justified rather than centred line-by-line. */
+   them. The title reads left-justified (moot at one line, but holds if it
+   ever wraps); the subtitle is centred — at widths where each sentence fits
+   on one line, a centred short line reads better than one stranded at the
+   left edge of a wide box. */
 .intro {
   margin: 0 auto 2.5rem;
 }
 
 .intro-title {
-  max-width: 30rem;
+  width: fit-content;
+  max-width: 100%;
   margin: 0 auto 1.25rem;
   text-align: left;
 }
 
 .intro-title h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-weight: 700;
-  font-size: 2.5rem;
+  font-size: 2.6rem;
   letter-spacing: -0.01em;
   margin: 0;
 }
 
-/* The one emphasised word: a different, more "typeset" face (Fraunces
-   italic) plus an underline, standing apart from the Space Grotesk used
-   everywhere else — a fun-explainer accent on the title, not the nav. */
+/* "Claude Code": same face and weight as the rest of the title, picked out
+   in the brand gold rather than a different font. */
+.title-accent {
+  color: var(--gold);
+}
+
+/* "works": gold, italic, underlined — the one word that departs from the
+   title's regular weight/style, for a fun-explainer accent rather than a
+   uniformly technical heading. */
 .title-emphasis {
-  font-family: var(--font-serif);
   font-style: italic;
   font-weight: 600;
-  font-size: 1.05em;
-  color: var(--accent);
+  color: var(--gold);
   text-decoration: underline;
   text-decoration-thickness: 0.06em;
   text-underline-offset: 0.14em;
 }
 
 .intro-subtitle {
-  text-align: left;
+  text-align: center;
 }
 
 .intro-subtitle p {
@@ -210,7 +224,7 @@ a {
 .step-current-title {
   margin: 0;
   text-align: center;
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-weight: 600;
   font-size: 1.85rem;
   color: var(--ink);
@@ -218,8 +232,8 @@ a {
 
 .step-peek {
   text-align: center;
-  color: var(--muted-dim);
-  font-family: var(--font-display);
+  color: var(--gold-dim);
+  font-family: var(--font-serif);
   font-weight: 500;
   font-size: 1.3rem;
   overflow: hidden;
@@ -244,6 +258,10 @@ a {
   mask-image: linear-gradient(to right, black 40%, rgb(0 0 0 / 45%) 100%);
 }
 
+/* Gold fill regardless of theme (see the --gold comment above) — this and
+   the theme toggle are the only two buttons on the page, and sharing one
+   solid colour between them is what makes it read as a colour theme rather
+   than a one-off accent. */
 .step-arrow {
   display: flex;
   align-items: center;
@@ -251,15 +269,14 @@ a {
   flex: none;
   width: 2.6rem;
   height: 2.6rem;
+  border: none;
   border-radius: 50%;
-  border: 1.5px solid var(--muted);
-  background: var(--surface-alt);
+  background: var(--gold);
   color: var(--ink);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 15%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
   transition:
-    border-color 0.15s ease,
-    color 0.15s ease,
+    transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 
@@ -278,9 +295,8 @@ a {
 }
 
 .step-arrow:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
 }
 
 /* The step card itself */
