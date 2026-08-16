@@ -193,7 +193,13 @@ function drawLeader(card: Card, zone: Zone, payload: DOMRect, fan: number): void
 function layoutPayload(payload: HTMLElement): void {
   for (const stale of payload.querySelectorAll(".annotation-leader")) stale.remove();
 
-  const elements = [...payload.querySelectorAll<HTMLElement>(".annotation-card")];
+  // Sorted by annotation number, not by DOM order: a region's card is appended
+  // after the lines it wraps, so a *nested* annotation's card comes first in the
+  // document even though its number is higher. Left unsorted, the cards stack in
+  // the wrong order and their leader lines cross over each other.
+  const elements = [...payload.querySelectorAll<HTMLElement>(".annotation-card")].sort(
+    (a, b) => Number(a.dataset.annotation) - Number(b.dataset.annotation),
+  );
   if (elements.length === 0) return;
 
   // Clear the last pass's positions first: the CSS-anchored position is the
