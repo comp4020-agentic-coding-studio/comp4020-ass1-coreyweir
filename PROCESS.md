@@ -60,6 +60,7 @@ no longer fit for purpose. Accordingly, I had an agent help me update it, to giv
 - what should be covered
 - how to treat the placeholder content
 - what to do with the research output it would be pointed towards
+
 With the guidance in this CLAUDE.md, Claude was able to produce really solid output on the first iteration.
 The CLAUDE.md in question is [here](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/blob/cf3758d/CLAUDE.md).
 The copy was added in [`c04144f`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/commit/c04144f8d1c2fe6ab18b4287c673c98c73eb1af5).
