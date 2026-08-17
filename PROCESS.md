@@ -52,3 +52,14 @@ through this
 to this final design:
 ![After Final Mockups](reflections/after-2.png)
 These changes spanned commits [`0df53c5...2121e8b`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/compare/0df53c5...2121e8b).
+
+When I was happy with the UX, had finished my research, and was ready to write the copy for the site, I realised that my prototyping-oriented CLAUDE.md was
+no longer fit for purpose. Accordingly, I had an agent help me update it, to give the copy writing agent guidance on:
+- what the site was
+- what the right tone/detail level was
+- what should be covered
+- how to treat the placeholder content
+- what to do with the research output it would be pointed towards
+With the guidance in this CLAUDE.md, Claude was able to produce really solid output on the first iteration.
+The CLAUDE.md in question is [here](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/blob/cf3758d/CLAUDE.md).
+The copy was added in [`c04144f`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/commit/c04144f8d1c2fe6ab18b4287c673c98c73eb1af5).
