@@ -58,7 +58,7 @@ export const STEPS: Step[] = [
         id: "request",
         title: "One request, assembled from scratch",
         body: [
-          "There is no session on the model's side. Every time Claude Code needs it, the harness builds a fresh request out of the same three parts — the system prompt, the tool schemas, and the whole conversation so far — and sends the lot.",
+          "There is no session on the model's side. Whenever you send a prompt or Claude calls a tool, the harness builds a fresh request out of the same three parts — the system prompt, the tool schemas, and the whole conversation so far — and sends the lot.",
           "So a conversation isn't something the model has. It's something the harness resends. Tools, skills, compaction and caching are all variations on what gets added to that pile, or trimmed out of it.",
         ],
         payload: {
@@ -103,7 +103,7 @@ export const STEPS: Step[] = [
         id: "response",
         title: "Think, speak, act",
         body: [
-          'The reply is an array of content blocks, and it can hold more than one kind at a time. A "thinking" block is the model\'s reasoning — you never see it, but it is sent back with every later request in the turn, so it costs context like anything else.',
+          'The reply is an array of content blocks, and it can hold more than one kind at a time. The model\'s internal reasoning comes back as "thinking" blocks — encrypted, occasionally redacted outright, and resent with every later request in the turn, so it costs context like anything else. Depending on how Claude Code is configured you may see a summary of that reasoning; you never see the reasoning itself.',
           "The last block here is a tool_use: a request for the harness to go and run something. That is what makes this a loop rather than an answer.",
         ],
         payload: {
@@ -116,6 +116,10 @@ export const STEPS: Step[] = [
                 thinking:
                   "Dark mode means a theme toggle. Find where the theme is defined before touching anything.",
                 signature: "1e9f8c...",
+              },
+              {
+                type: "redacted_thinking",
+                data: "EvgBCkYIBRgCKkBmMS9...",
               },
               {
                 type: "text",
@@ -133,11 +137,16 @@ export const STEPS: Step[] = [
           annotations: [
             {
               path: ["content", 0],
-              title: "Reasoning, out of sight",
-              note: "Never shown to you, always resent. The model thinks before each action rather than once at the start, so a thinking-heavy session is a context-heavy one.",
+              title: "A summary, not the thought",
+              note: 'The readable line is a summary of the reasoning, written by a different model; "signature" is the reasoning itself, encrypted. Whether Claude Code shows you that summary is a setting — the block is sent back either way.',
             },
             {
-              path: ["content", 2],
+              path: ["content", 1],
+              title: "Reasoning, out of sight",
+              note: "Where the reasoning is redacted, ciphertext is all that comes back — and it still has to be passed back untouched. The model thinks before each action rather than once at the start, so a thinking-heavy session is a context-heavy one.",
+            },
+            {
+              path: ["content", 3],
               title: "Asking, not doing",
               note: "A name, an id, and arguments. The model can't run Grep itself — it writes down the call and waits for the harness to come back with the output.",
             },
@@ -222,8 +231,8 @@ export const STEPS: Step[] = [
           annotations: [
             {
               path: ["description"],
-              title: "The whole interface",
-              note: "Half of it is spent telling the model when not to reach for this. A description isn't documentation — it's where a tool competes for attention against every other one loaded.",
+              title: "Half of the interface",
+              note: "The schema says how to call the tool; the description is the only thing saying when. It isn't documentation — it's where a tool competes for attention against every other one loaded.",
             },
             {
               path: ["input_schema", "properties"],
