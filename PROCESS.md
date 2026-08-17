@@ -40,3 +40,15 @@ to this:
 While I still wasn't happy with that design, it incorporated the key elements I was after: centred title
 and intro, carousel of steps with subsections. I knew I was on the right track. These changes landed in
 [`f3af01f...79247c9`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/compare/f3af01f...79247c9)
+
+After a couple of iterations on the prototype, I realised that Claude was unlikely to match my expectations of the design based on my
+descriptions alone, so I decided to produce mock-ups. First, I used Gemini to land on the styling for the title and the colour scheme, and
+had claude implement that. Then, I used Gemini and ChatGPT to try to mock-up the content formatting and UX, and then refined the mock-ups by
+hand using GIMP. By feeding Claude exactly what I wanted the site to look like, and giving it a few prompts to improve things and iterate as I went,
+I was able to take the site from this
+![Before Mockups](reflections/before.png)
+through this
+![After First Mockup](reflections/after-1.png)
+to this final design:
+![After Final Mockups](reflections/after-2.png)
+These changes spanned commits [`0df53c5...2121e8b`](https://github.com/comp4020-agentic-coding-studio/comp4020-ass1-coreyweir/compare/0df53c5...2121e8b).
