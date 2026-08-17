@@ -353,14 +353,21 @@ export function mountCarousel(root: HTMLElement): void {
     article.append(sections);
     cardRoot!.append(article);
 
-    // After the cards are in the document, so their real heights can be read.
-    layoutCards(cardRoot!);
-
     if (focusKey) {
       cardRoot!
         .querySelector<HTMLElement>(`[data-focus-key="${CSS.escape(focusKey)}"]`)
         ?.focus();
     }
+
+    // After the cards are in the document, so their real heights can be read —
+    // and after the focus above, which is the subtle half. Restoring focus to a
+    // marker near the edge of the window makes the browser scroll it into view,
+    // and the placement is decided in viewport coordinates: laid out first, the
+    // cards were positioned against the old scroll position and then carried
+    // off-screen by it. On a phone, where a payload is taller than the window
+    // and that scroll is a long one, the card opened well above the top of the
+    // screen and looked like nothing had happened at all.
+    layoutCards(cardRoot!);
   }
 
   function goTo(newIndex: number): void {

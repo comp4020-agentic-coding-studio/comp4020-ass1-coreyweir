@@ -57,14 +57,18 @@ Card placement, in preference order — the rule being "land in empty space":
   meant to prevent. It can't be caught in a headless browser, which reports a
   scrollbar width of zero.
 
-A "left of the box" zone was planned for the stacked layout, built, and then
-removed: the payload always spans the content column, so the margin beside it is
-(viewport − 1024px) / 2, which only exceeds a card's width above ~1580px — by
-which point the layout is side by side and the right-hand gutter already fits.
-No viewport could reach it. Capping the payload's width doesn't rescue it
-either: at 820px an aggressive cap still leaves ~150px a side, and a 150px-wide
-card isn't readable. Worth recording because "left or right, whichever has room"
-is the obvious instinct, and the arithmetic says the room isn't there.
+A "left of the box" zone was planned for the stacked layout, built, removed, and
+then brought back for the side-by-side one. The removal measured the wrong gap:
+in the stacked layout the payload spans the content column, so the margin beside
+it is (viewport − 1024px) / 2 and never fits a card. But side by side, the space
+left of the payload is the *prose* column — 460-odd pixels — and the copy is two
+short paragraphs against a payload several times taller, so most of it is empty.
+Cards go there when they clear the last paragraph; when they can't, the zone is
+refused and they stack as before. Its window is a squarish viewport, roughly
+900–1540px wide: too narrow for the right-hand gutter, too short to stack under
+the box. The leader is drawn from the region's left edge rather than the marker
+dot, which sits in the gutter on the far side of the payload — a line from there
+would cross the JSON it's pointing at.
 
 Cards are draggable by their header (double-click puts one back). A drag is
 stored as an offset from the placement, not an absolute position, so a dragged

@@ -8,6 +8,10 @@
 // acceptable, so this pass finds somewhere the cards do fit:
 //
 //  - Right of the box — the default, each card level with its own region.
+//  - Left of the box, in the column the prose is in, but never over the prose
+//    itself: the copy is two or three short paragraphs and the payload beside it
+//    is far taller, so most of that column is empty. Only reachable while the
+//    layout is side by side, which is also the only time the column exists.
 //  - Below the box, flowed into rows. Overlaps the prose, which is fine: a card
 //    is closable and draggable, so overlap is recoverable in a way that being
 //    off-screen isn't.
@@ -15,11 +19,19 @@
 //    and cards placed below it would open off-screen — the worst outcome
 //    available, since the reader clicks and apparently nothing happens.
 //
-// A "left of the box" zone was tried and removed: the payload always spans the
-// content column, so the margin beside it is (viewport − 1024px) / 2, which
-// only exceeds a card's width above ~1580px — by which point the layout is side
-// by side and the right-hand gutter already fits. There is no viewport where it
-// could trigger, and a branch that can never run implies coverage it hasn't got.
+// A "left of the box" zone was tried and removed once before, on the arithmetic
+// that the margin beside the content column is (viewport − 1024px) / 2 and only
+// exceeds a card's width above ~1580px, by which point the right-hand gutter
+// already fits. That was measuring the wrong gap. Beside the payload isn't the
+// page margin, it's the prose column — 460-odd pixels of it — and it's empty
+// from the end of the copy downwards. What the old arithmetic got right is that
+// the room runs out with the column: below 900px the layout stacks, the payload
+// spans the full width, and the horizontal check drops the zone on its own.
+//
+// The window where left earns its place is a squarish one, roughly 900–1540px
+// wide: too narrow for the right-hand gutter, too short for a stack under the
+// box. Without it the cards land on top of the JSON while half the section sits
+// empty.
 //
 // All of a payload's cards go to the same zone rather than each picking its own
 // best spot: a mix of one card beside the box and another under it reads as a
@@ -68,7 +80,7 @@ interface Card {
   offset: Offset;
 }
 
-type Zone = "right" | "below" | "above";
+type Zone = "right" | "left" | "below" | "above";
 
 /**
  * The *visible* viewport, excluding the classic scrollbar gutter.
@@ -125,6 +137,29 @@ function fitsHorizontally(box: Box): boolean {
   return box.x >= EDGE_PX && box.x + box.width <= viewportWidth() - EDGE_PX;
 }
 
+function overlaps(box: Box, rect: DOMRect): boolean {
+  return (
+    box.x < rect.right &&
+    box.x + box.width > rect.left &&
+    box.y < rect.bottom &&
+    box.y + box.height > rect.top
+  );
+}
+
+/**
+ * The lowest edge of the copy a column at this x would run into, or −∞ when it
+ * passes the copy by. Cards may not start above it, which is what keeps the
+ * left-hand zone in the empty part of the prose column rather than on the words.
+ */
+function copyFloor(copy: DOMRect[], x: number, width: number): number {
+  let floor = Number.NEGATIVE_INFINITY;
+  for (const rect of copy) {
+    if (rect.right <= x || rect.left >= x + width) continue;
+    floor = Math.max(floor, rect.bottom + GAP_PX);
+  }
+  return floor;
+}
+
 /**
  * Cards beside the box, each vertically centred on its own region, then pushed
  * down out of each other's way — two annotations a few lines apart anchor to
@@ -132,18 +167,31 @@ function fitsHorizontally(box: Box): boolean {
  *
  * A dragged card is left out of that: it's where the reader put it, so it
  * neither gets pushed nor pushes anything else around.
+ *
+ * On the left the copy is a second floor: the column starts below the last
+ * paragraph rather than level with its region, and if it can't clear the copy
+ * and stay on screen at the same time, the zone is refused and the cards stack
+ * instead. Sitting a little low beside the right lines is a small loss; sitting
+ * on the sentence the reader is halfway through isn't.
  */
-function placeRight(cards: Card[], payload: DOMRect): boolean {
+function placeBeside(
+  cards: Card[],
+  payload: DOMRect,
+  side: "right" | "left",
+  copy: DOMRect[],
+): boolean {
   let previousBottom = Number.NEGATIVE_INFINITY;
   for (const card of cards) {
     const { width, height } = card.box;
-    const x = payload.right + GAP_PX;
+    const x = side === "right" ? payload.right + GAP_PX : payload.left - GAP_PX - width;
     if (!fitsHorizontally({ x, y: 0, width, height })) return false;
 
+    const floor =
+      side === "left" ? copyFloor(copy, x, width) : Number.NEGATIVE_INFINITY;
     const centred = card.anchor.top + card.anchor.height / 2 - height / 2;
     const y = isDragged(card.offset)
       ? centred
-      : Math.max(centred, previousBottom + STACK_GAP_PX);
+      : Math.max(centred, floor, previousBottom + STACK_GAP_PX);
     card.box = { x, y, width, height };
     if (!isDragged(card.offset)) previousBottom = y + height;
   }
@@ -163,6 +211,13 @@ function placeRight(cards: Card[], payload: DOMRect): boolean {
     if (shift !== 0) {
       for (const card of placed) card.box = { ...card.box, y: card.box.y + shift };
     }
+  }
+
+  // That slide is what can undo the floor: a column too tall for the room under
+  // the copy is pushed back up over it. Checked after the fact rather than
+  // predicted, so the answer is about where the cards actually ended up.
+  if (side === "left" && cards.some((c) => copy.some((r) => overlaps(c.box, r)))) {
+    return false;
   }
   return true;
 }
@@ -250,8 +305,9 @@ function placeStacked(cards: Card[], payload: DOMRect): Zone {
   return zone;
 }
 
-function chooseZone(cards: Card[], payload: DOMRect): Zone {
-  if (placeRight(cards, payload)) return "right";
+function chooseZone(cards: Card[], payload: DOMRect, copy: DOMRect[]): Zone {
+  if (placeBeside(cards, payload, "right", copy)) return "right";
+  if (placeBeside(cards, payload, "left", copy)) return "left";
   return placeStacked(cards, payload);
 }
 
@@ -270,6 +326,12 @@ function markerCentre(card: Card): { x: number; y: number } | undefined {
  * Beside the box it's a straight line to the nearest point on the card — one
  * rule that covers a card level with its region, one nudged down, and one
  * dragged anywhere.
+ *
+ * On the left it's a straight line too, but drawn from the region's own left
+ * edge rather than from the dot. The dot sits in the gutter on the far side of
+ * the box, and a line from there to a card on the left would be drawn straight
+ * through the JSON it's pointing at. The region is outlined, so a line leaving
+ * its left border still says which lines the card belongs to.
  *
  * Below the box it has to be routed rather than direct: a straight line from a
  * dot at the box's right edge to a card underneath it cuts diagonally across
@@ -297,11 +359,18 @@ function route(
   columnRight: number | undefined,
 ): Array<{ x: number; y: number }> {
   const { x, y, width, height } = card.box;
-  const nearest = {
-    x: Math.min(Math.max(from.x, x), x + width),
-    y: Math.min(Math.max(from.y, y), y + height),
-  };
-  if (zone === "right" || isDragged(card.offset)) return [from, nearest];
+  const nearestTo = (point: { x: number; y: number }): { x: number; y: number } => ({
+    x: Math.min(Math.max(point.x, x), x + width),
+    y: Math.min(Math.max(point.y, y), y + height),
+  });
+  if (zone === "left") {
+    const edge = {
+      x: card.anchor.left,
+      y: card.anchor.top + card.anchor.height / 2,
+    };
+    return [edge, nearestTo(edge)];
+  }
+  if (zone === "right" || isDragged(card.offset)) return [from, nearestTo(from)];
 
   // A single column of cards can't be entered through the edge facing the box:
   // whichever card is nearer, the other one's leader has to run behind it, and a
@@ -373,6 +442,20 @@ function drawLeader(
   card.el.insertAdjacentElement("beforebegin", svg);
 }
 
+/**
+ * The section's prose, paragraph by paragraph.
+ *
+ * Per paragraph rather than per container: `.section-body` is a grid item beside
+ * the payload, so it's stretched to the height of the taller of the two and its
+ * own rect claims the whole column even when the words stop a third of the way
+ * down. That measurement makes the left-hand zone look permanently blocked.
+ */
+function copyRects(payload: HTMLElement): DOMRect[] {
+  const detail = payload.closest(".section-detail");
+  const paragraphs = detail?.querySelectorAll<HTMLElement>(".section-body p") ?? [];
+  return [...paragraphs].map((el) => el.getBoundingClientRect());
+}
+
 function layoutPayload(payload: HTMLElement): void {
   for (const stale of payload.querySelectorAll(".annotation-leader")) stale.remove();
 
@@ -408,7 +491,7 @@ function layoutPayload(payload: HTMLElement): void {
   }
 
   const payloadRect = payload.getBoundingClientRect();
-  const zone = chooseZone(cards, payloadRect);
+  const zone = chooseZone(cards, payloadRect, copyRects(payload));
 
   // One card per row: no two share a top edge. Only then does a leader have to
   // go round the side of the stack (see route()).
